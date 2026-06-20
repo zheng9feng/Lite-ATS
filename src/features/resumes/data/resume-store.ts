@@ -11,38 +11,54 @@ export type ResumeFile = {
   fileName: string
   fileSize: number
   fileType: string
+  id: string
   objectUrl: string
+  uploadedAt: string
 }
 
 type ResumeStore = {
-  resume: ResumeFile | null
-  setResume: (payload: { applicant: ResumeApplicant; file: File }) => void
-  clearResume: () => void
+  resumes: ResumeFile[]
+  addResume: (payload: { applicant: ResumeApplicant; file: File }) => void
+  clearResumes: () => void
 }
 
-function revokeResumeUrl(resume: ResumeFile | null) {
-  if (resume) {
-    URL.revokeObjectURL(resume.objectUrl)
+function createResumeId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID()
   }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
-export const useResumeStore = create<ResumeStore>((set, get) => ({
-  resume: null,
-  setResume: ({ applicant, file }) => {
-    revokeResumeUrl(get().resume)
+function revokeResumeUrls(resumes: ResumeFile[]) {
+  resumes.forEach((resume) => {
+    URL.revokeObjectURL(resume.objectUrl)
+  })
+}
 
-    set({
-      resume: {
-        applicant,
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type || 'application/pdf',
-        objectUrl: URL.createObjectURL(file),
-      },
-    })
+export const useResumeStore = create<ResumeStore>((set) => ({
+  resumes: [],
+  addResume: ({ applicant, file }) => {
+    set((state) => ({
+      resumes: [
+        ...state.resumes,
+        {
+          applicant,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type || 'application/pdf',
+          id: createResumeId(),
+          objectUrl: URL.createObjectURL(file),
+          uploadedAt: new Date().toISOString(),
+        },
+      ],
+    }))
   },
-  clearResume: () => {
-    revokeResumeUrl(get().resume)
-    set({ resume: null })
+  clearResumes: () => {
+    set((state) => {
+      revokeResumeUrls(state.resumes)
+
+      return { resumes: [] }
+    })
   },
 }))

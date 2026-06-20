@@ -1,6 +1,14 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { FileText, Upload } from 'lucide-react'
+import {
+  type ColumnDef,
+  type PaginationState,
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
+import { ExternalLink, FileText, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -9,27 +17,22 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { ConfigDrawer } from '@/components/config-drawer'
+import { DataTablePagination } from '@/components/data-table'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { type ResumeApplicant, useResumeStore } from '../data/resume-store'
-
-type ResumeQuery = {
-  email: string
-  name: string
-  positionApplied: string
-}
-
-const emptyQuery: ResumeQuery = {
-  email: '',
-  name: '',
-  positionApplied: '',
-}
+import { type ResumeFile, useResumeStore } from '../data/resume-store'
 
 function formatFileSize(size: number) {
   if (size < 1024) return `${size} B`
@@ -38,54 +41,92 @@ function formatFileSize(size: number) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`
 }
 
-function normalize(value: string) {
-  return value.trim().toLowerCase()
+function formatUploadedAt(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
 }
 
-function hasApplicantQuery(query: ResumeQuery) {
-  return Object.values(query).some((value) => normalize(value).length > 0)
-}
-
-function fieldMatches(queryValue: string, applicantValue: string) {
-  const normalizedQuery = normalize(queryValue)
-
-  return (
-    normalizedQuery.length > 0 &&
-    normalize(applicantValue).includes(normalizedQuery)
-  )
-}
-
-function applicantMatchesQuery(applicant: ResumeApplicant, query: ResumeQuery) {
-  return (
-    fieldMatches(query.name, applicant.name) ||
-    fieldMatches(query.email, applicant.email) ||
-    fieldMatches(query.positionApplied, applicant.positionApplied)
-  )
+function openResumePreview(resume: ResumeFile) {
+  window.open(resume.objectUrl, '_blank', 'noopener,noreferrer')
 }
 
 export function ResumePreviewPage() {
-  const resume = useResumeStore((state) => state.resume)
-  const [query, setQuery] = useState<ResumeQuery>(emptyQuery)
-  const [submittedQuery, setSubmittedQuery] = useState<ResumeQuery | null>(null)
+  const resumes = useResumeStore((state) => state.resumes)
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+  const columns = useMemo<ColumnDef<ResumeFile>[]>(
+    () => [
+      {
+        accessorKey: 'applicant.name',
+        header: 'Applicant',
+        cell: ({ row }) => (
+          <div className='min-w-40'>
+            <p className='font-medium'>{row.original.applicant.name}</p>
+            <p className='text-sm text-muted-foreground'>
+              {row.original.applicant.email}
+            </p>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'applicant.positionApplied',
+        header: 'Position applied',
+        cell: ({ row }) => row.original.applicant.positionApplied,
+      },
+      {
+        accessorKey: 'fileName',
+        header: 'Resume file',
+        cell: ({ row }) => (
+          <div className='min-w-48'>
+            <p className='font-medium'>{row.original.fileName}</p>
+            <p className='text-sm text-muted-foreground'>
+              {formatFileSize(row.original.fileSize)}
+            </p>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'uploadedAt',
+        header: 'Uploaded',
+        cell: ({ row }) => formatUploadedAt(row.original.uploadedAt),
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => (
+          <div className='flex justify-end'>
+            <Button
+              aria-label={`Preview resume for ${row.original.applicant.name}`}
+              size='sm'
+              type='button'
+              variant='outline'
+              onClick={() => openResumePreview(row.original)}
+            >
+              <ExternalLink />
+              Preview
+            </Button>
+          </div>
+        ),
+        enableHiding: false,
+      },
+    ],
+    []
+  )
 
-  const hasSubmittedQuery = submittedQuery
-    ? hasApplicantQuery(submittedQuery)
-    : false
-  const matchingResume =
-    resume &&
-    submittedQuery &&
-    hasSubmittedQuery &&
-    applicantMatchesQuery(resume.applicant, submittedQuery)
-      ? resume
-      : null
-  const showNoMatch =
-    resume && submittedQuery && hasSubmittedQuery && !matchingResume
-  const showSearchPrompt = resume && !matchingResume && !showNoMatch
-
-  function handleSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setSubmittedQuery(query)
-  }
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const table = useReactTable({
+    data: resumes,
+    columns,
+    state: {
+      pagination,
+    },
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  })
 
   return (
     <>
@@ -103,7 +144,8 @@ export function ResumePreviewPage() {
               Resume Preview
             </h2>
             <p className='text-muted-foreground'>
-              Preview the latest PDF resume uploaded in this browser session.
+              Review applicants with uploaded PDF resumes and open each resume
+              in a new tab.
             </p>
           </div>
           <Button asChild variant='outline'>
@@ -114,150 +156,59 @@ export function ResumePreviewPage() {
           </Button>
         </div>
 
-        {resume ? (
-          <Card className='max-w-4xl'>
+        {resumes.length > 0 ? (
+          <div className='flex flex-1 flex-col gap-4'>
+            <div className='overflow-hidden rounded-md border'>
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <DataTablePagination table={table} className='mt-auto' />
+          </div>
+        ) : (
+          <Card className='max-w-2xl'>
             <CardHeader>
-              <CardTitle>Find Applicant Resume</CardTitle>
-              <CardDescription>
-                Enter any applicant detail to search by partial name, email, or
-                position applied for.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form
-                className='grid gap-4 md:grid-cols-[1fr_1fr_1fr_auto]'
-                onSubmit={handleSearch}
-              >
-                <div className='space-y-2'>
-                  <Label htmlFor='resume-query-name'>Name</Label>
-                  <Input
-                    id='resume-query-name'
-                    placeholder='Applicant name'
-                    value={query.name}
-                    onChange={(event) =>
-                      setQuery((current) => ({
-                        ...current,
-                        name: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className='space-y-2'>
-                  <Label htmlFor='resume-query-email'>Email</Label>
-                  <Input
-                    id='resume-query-email'
-                    placeholder='applicant@example.com'
-                    type='email'
-                    value={query.email}
-                    onChange={(event) =>
-                      setQuery((current) => ({
-                        ...current,
-                        email: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className='space-y-2'>
-                  <Label htmlFor='resume-query-position'>
-                    Position applied for
-                  </Label>
-                  <Input
-                    id='resume-query-position'
-                    placeholder='Frontend Engineer'
-                    value={query.positionApplied}
-                    onChange={(event) =>
-                      setQuery((current) => ({
-                        ...current,
-                        positionApplied: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <Button className='self-end' type='submit'>
-                  Search
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        ) : null}
-
-        {matchingResume ? (
-          <Card className='min-h-[calc(100vh-14rem)]'>
-            <CardHeader>
-              <div className='flex items-start gap-3'>
+              <div className='flex items-center gap-3'>
                 <div className='flex size-10 items-center justify-center rounded-md bg-muted'>
                   <FileText className='size-5' />
                 </div>
                 <div>
-                  <CardTitle>{matchingResume.fileName}</CardTitle>
+                  <CardTitle>No resume ready to preview</CardTitle>
                   <CardDescription>
-                    {formatFileSize(matchingResume.fileSize)} ·{' '}
-                    {matchingResume.fileType}
+                    Upload a PDF resume first, then return here to preview it
+                    online.
                   </CardDescription>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className='min-h-[calc(100vh-22rem)] space-y-4'>
-              <div className='grid gap-3 rounded-md border bg-muted/40 p-4 text-sm sm:grid-cols-3'>
-                <div>
-                  <p className='font-medium'>Name</p>
-                  <p className='text-muted-foreground'>
-                    {matchingResume.applicant.name}
-                  </p>
-                </div>
-                <div>
-                  <p className='font-medium'>Email</p>
-                  <p className='text-muted-foreground'>
-                    {matchingResume.applicant.email}
-                  </p>
-                </div>
-                <div>
-                  <p className='font-medium'>Position applied for</p>
-                  <p className='text-muted-foreground'>
-                    {matchingResume.applicant.positionApplied}
-                  </p>
-                </div>
-              </div>
-              <iframe
-                aria-label={`Resume preview for ${matchingResume.fileName}`}
-                className='min-h-[32rem] w-full rounded-md border bg-muted'
-                src={matchingResume.objectUrl}
-                title={`Resume preview for ${matchingResume.fileName}`}
-              />
-            </CardContent>
-          </Card>
-        ) : showNoMatch ? (
-          <Card className='max-w-2xl'>
-            <CardHeader>
-              <CardTitle>No matching resume found</CardTitle>
-              <CardDescription>
-                Try a different applicant name, email, or position applied for.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant='outline'>
-                <Link to='/resumes/upload'>Upload another resume</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : showSearchPrompt ? (
-          <Card className='max-w-2xl'>
-            <CardHeader>
-              <CardTitle>Search for a resume to preview</CardTitle>
-              <CardDescription>
-                Enter at least one applicant detail above to look up the latest
-                uploaded resume.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        ) : (
-          <Card className='max-w-2xl'>
-            <CardHeader>
-              <CardTitle>No resume ready to preview</CardTitle>
-              <CardDescription>
-                Upload a PDF resume first, then return here to preview it
-                online.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
