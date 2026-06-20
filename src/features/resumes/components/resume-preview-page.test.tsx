@@ -51,13 +51,35 @@ function renderResumePreviewPage() {
   )
 }
 
+function createStoredResume(index: number) {
+  return {
+    applicant: {
+      email: `candidate${index}@example.com`,
+      name: `Candidate ${index}`,
+      positionApplied: index % 2 === 0 ? 'Designer' : 'Frontend Engineer',
+    },
+    fileName: `candidate-${index}.pdf`,
+    fileSize: 1024 * index,
+    fileType: 'application/pdf',
+    id: `resume-${index}`,
+    objectUrl: `blob:resume-${index}`,
+    uploadedAt: `2026-06-${String(index).padStart(2, '0')}T08:00:00.000Z`,
+  }
+}
+
 describe('ResumePreviewPage', () => {
+  const open = vi.fn()
+
   beforeEach(() => {
     vi.clearAllMocks()
-    useResumeStore.setState({ resume: null })
+    Object.defineProperty(window, 'open', {
+      configurable: true,
+      value: open,
+    })
+    useResumeStore.setState({ resumes: [] })
   })
 
-  it('shows an empty state when no resume has been uploaded', async () => {
+  it('shows an empty state when no resumes have been uploaded', async () => {
     const { getByRole, getByText } = await renderResumePreviewPage()
 
     await expect
@@ -68,88 +90,70 @@ describe('ResumePreviewPage', () => {
       .toHaveAttribute('href', '/resumes/upload')
   })
 
-  it('asks for applicant information before showing an active resume', async () => {
+  it('renders uploaded applicants in a paginated table', async () => {
     useResumeStore.setState({
-      resume: {
-        applicant: {
-          email: 'ava@example.com',
-          name: 'Ava Chen',
-          positionApplied: 'Frontend Engineer',
-        },
-        fileName: 'candidate.pdf',
-        fileSize: 1024,
-        fileType: 'application/pdf',
-        objectUrl: 'blob:active-resume',
-      },
+      resumes: [createStoredResume(1), createStoredResume(2)],
     })
 
-    const { getByLabelText, getByText } = await renderResumePreviewPage()
+    const { getByText } = await renderResumePreviewPage()
 
+    await expect.element(getByText(/^Applicant$/)).toBeInTheDocument()
+    await expect.element(getByText(/^Resume file$/)).toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 1$/)).toBeInTheDocument()
     await expect
-      .element(getByText('Search for a resume to preview'))
+      .element(getByText('candidate1@example.com'))
       .toBeInTheDocument()
-    await expect
-      .element(getByLabelText('Resume preview for candidate.pdf'))
-      .not.toBeInTheDocument()
-  })
-
-  it('renders the matching resume metadata and PDF viewer after a partial query', async () => {
-    useResumeStore.setState({
-      resume: {
-        applicant: {
-          email: 'ava@example.com',
-          name: 'Ava Chen',
-          positionApplied: 'Frontend Engineer',
-        },
-        fileName: 'candidate.pdf',
-        fileSize: 1024,
-        fileType: 'application/pdf',
-        objectUrl: 'blob:active-resume',
-      },
-    })
-
-    const { getByLabelText, getByRole, getByText } =
-      await renderResumePreviewPage()
-
-    await userEvent.type(getByLabelText('Name'), 'ava')
-    await userEvent.click(getByRole('button', { name: /^Search$/i }))
-
-    await expect.element(getByText('candidate.pdf')).toBeInTheDocument()
-    await expect.element(getByText('Ava Chen')).toBeInTheDocument()
-    await expect.element(getByText('ava@example.com')).toBeInTheDocument()
     await expect.element(getByText('Frontend Engineer')).toBeInTheDocument()
-    await expect.element(getByText('1 KB')).toBeInTheDocument()
+    await expect.element(getByText('candidate-1.pdf')).toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 2$/)).toBeInTheDocument()
     await expect
-      .element(getByLabelText('Resume preview for candidate.pdf'))
-      .toHaveAttribute('src', 'blob:active-resume')
+      .element(getByText('candidate2@example.com'))
+      .toBeInTheDocument()
+    await expect.element(getByText('Designer')).toBeInTheDocument()
+    await expect.element(getByText('candidate-2.pdf')).toBeInTheDocument()
   })
 
-  it('shows no match when applicant query fields do not partially match', async () => {
+  it('paginates uploaded applicants', async () => {
     useResumeStore.setState({
-      resume: {
-        applicant: {
-          email: 'ava@example.com',
-          name: 'Ava Chen',
-          positionApplied: 'Frontend Engineer',
-        },
-        fileName: 'candidate.pdf',
-        fileSize: 1024,
-        fileType: 'application/pdf',
-        objectUrl: 'blob:active-resume',
-      },
+      resumes: Array.from({ length: 11 }, (_, index) =>
+        createStoredResume(index + 1)
+      ),
     })
 
-    const { getByLabelText, getByRole, getByText } =
-      await renderResumePreviewPage()
+    const { getByRole, getByText } = await renderResumePreviewPage()
 
-    await userEvent.type(getByLabelText('Position applied for'), 'accounting')
-    await userEvent.click(getByRole('button', { name: /^Search$/i }))
-
+    await expect.element(getByText(/^Candidate 1$/)).toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 11$/)).not.toBeInTheDocument()
     await expect
-      .element(getByText('No matching resume found'))
+      .element(getByRole('button', { name: /Go to page 2/i }))
+      .toBeInTheDocument()
+
+    await userEvent.click(getByRole('button', { name: /Go to next page/i }))
+
+    await expect.element(getByText(/^Candidate 11$/)).toBeInTheDocument()
+    await expect
+      .element(getByText('candidate11@example.com'))
       .toBeInTheDocument()
     await expect
-      .element(getByLabelText('Resume preview for candidate.pdf'))
-      .not.toBeInTheDocument()
+      .element(getByRole('button', { name: /Go to previous page/i }))
+      .toBeEnabled()
+  })
+
+  it('opens the selected resume in a new browser tab', async () => {
+    useResumeStore.setState({
+      resumes: [createStoredResume(1)],
+    })
+
+    const { getByRole } = await renderResumePreviewPage()
+
+    await userEvent.click(
+      getByRole('button', { name: /Preview resume for Candidate 1/i })
+    )
+
+    expect(open).toHaveBeenCalledWith(
+      'blob:resume-1',
+      '_blank',
+      'noopener,noreferrer'
+    )
   })
 })

@@ -16,15 +16,15 @@ describe('useResumeStore', () => {
       configurable: true,
       value: revokeObjectURL,
     })
-    useResumeStore.setState({ resume: null })
+    useResumeStore.setState({ resumes: [] })
   })
 
-  it('stores metadata and an object URL for the latest PDF', () => {
+  it('stores metadata and an object URL for an uploaded PDF', () => {
     const file = new File(['resume'], 'candidate.pdf', {
       type: 'application/pdf',
     })
 
-    useResumeStore.getState().setResume({
+    useResumeStore.getState().addResume({
       applicant: {
         email: 'ava@example.com',
         name: 'Ava Chen',
@@ -33,7 +33,8 @@ describe('useResumeStore', () => {
       file,
     })
 
-    expect(useResumeStore.getState().resume).toEqual({
+    expect(useResumeStore.getState().resumes).toHaveLength(1)
+    expect(useResumeStore.getState().resumes[0]).toMatchObject({
       applicant: {
         email: 'ava@example.com',
         name: 'Ava Chen',
@@ -44,15 +45,19 @@ describe('useResumeStore', () => {
       fileType: 'application/pdf',
       objectUrl: 'blob:resume',
     })
+    expect(useResumeStore.getState().resumes[0]?.id).toEqual(expect.any(String))
+    expect(useResumeStore.getState().resumes[0]?.uploadedAt).toEqual(
+      expect.any(String)
+    )
     expect(createObjectURL).toHaveBeenCalledWith(file)
   })
 
-  it('replaces the active resume and revokes the previous object URL', () => {
+  it('adds multiple resumes without revoking previous object URLs', () => {
     createObjectURL
       .mockReturnValueOnce('blob:first-resume')
       .mockReturnValueOnce('blob:second-resume')
 
-    useResumeStore.getState().setResume({
+    useResumeStore.getState().addResume({
       applicant: {
         email: 'first@example.com',
         name: 'First Candidate',
@@ -60,7 +65,7 @@ describe('useResumeStore', () => {
       },
       file: new File(['first'], 'first.pdf', { type: 'application/pdf' }),
     })
-    useResumeStore.getState().setResume({
+    useResumeStore.getState().addResume({
       applicant: {
         email: 'second@example.com',
         name: 'Second Candidate',
@@ -71,28 +76,46 @@ describe('useResumeStore', () => {
       }),
     })
 
-    expect(useResumeStore.getState().resume?.objectUrl).toBe(
-      'blob:second-resume'
-    )
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:first-resume')
+    expect(useResumeStore.getState().resumes).toHaveLength(2)
+    expect(
+      useResumeStore.getState().resumes.map((resume) => resume.fileName)
+    ).toEqual(['first.pdf', 'second.pdf'])
+    expect(
+      useResumeStore.getState().resumes.map((resume) => resume.objectUrl)
+    ).toEqual(['blob:first-resume', 'blob:second-resume'])
+    expect(revokeObjectURL).not.toHaveBeenCalled()
   })
 
-  it('clears the active resume and revokes its object URL', () => {
-    createObjectURL.mockReturnValue('blob:resume-to-clear')
-    useResumeStore.getState().setResume({
+  it('clears all resumes and revokes every object URL', () => {
+    createObjectURL
+      .mockReturnValueOnce('blob:first-resume')
+      .mockReturnValueOnce('blob:second-resume')
+
+    useResumeStore.getState().addResume({
       applicant: {
-        email: 'resume@example.com',
-        name: 'Resume Candidate',
-        positionApplied: 'Product Manager',
+        email: 'first@example.com',
+        name: 'First Candidate',
+        positionApplied: 'Designer',
       },
-      file: new File(['resume'], 'resume.pdf', {
+      file: new File(['first'], 'first.pdf', {
+        type: 'application/pdf',
+      }),
+    })
+    useResumeStore.getState().addResume({
+      applicant: {
+        email: 'second@example.com',
+        name: 'Second Candidate',
+        positionApplied: 'Developer',
+      },
+      file: new File(['second'], 'second.pdf', {
         type: 'application/pdf',
       }),
     })
 
-    useResumeStore.getState().clearResume()
+    useResumeStore.getState().clearResumes()
 
-    expect(useResumeStore.getState().resume).toBeNull()
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:resume-to-clear')
+    expect(useResumeStore.getState().resumes).toEqual([])
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:first-resume')
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:second-resume')
   })
 })

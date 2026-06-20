@@ -60,7 +60,7 @@ function isPdf(file?: File) {
 
 export function ResumeUploadPage() {
   const navigate = useNavigate()
-  const setResume = useResumeStore((state) => state.setResume)
+  const addResume = useResumeStore((state) => state.addResume)
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -73,7 +73,7 @@ export function ResumeUploadPage() {
   const fileRef = form.register('file')
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    setResume({
+    addResume({
       applicant: {
         email: values.email.trim(),
         name: values.name.trim(),

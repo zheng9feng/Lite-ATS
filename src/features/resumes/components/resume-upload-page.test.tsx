@@ -51,7 +51,7 @@ describe('ResumeUploadPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    useResumeStore.setState({ resume: null })
+    useResumeStore.setState({ resumes: [] })
     createObjectURL.mockReturnValue('blob:resume')
     Object.defineProperty(URL, 'createObjectURL', {
       configurable: true,
@@ -83,7 +83,7 @@ describe('ResumeUploadPage', () => {
       .element(getByText('Please upload a PDF resume.'))
       .toBeInTheDocument()
     expect(navigate).not.toHaveBeenCalled()
-    expect(useResumeStore.getState().resume).toBeNull()
+    expect(useResumeStore.getState().resumes).toEqual([])
   })
 
   it('rejects files that are not PDFs', async () => {
@@ -108,10 +108,10 @@ describe('ResumeUploadPage', () => {
       .element(getByText('Please upload a PDF file.'))
       .toBeInTheDocument()
     expect(navigate).not.toHaveBeenCalled()
-    expect(useResumeStore.getState().resume).toBeNull()
+    expect(useResumeStore.getState().resumes).toEqual([])
   })
 
-  it('stores a PDF resume and navigates to preview', async () => {
+  it('adds a PDF resume and navigates to preview', async () => {
     const file = new File(['resume'], 'candidate.pdf', {
       type: 'application/pdf',
     })
@@ -128,7 +128,8 @@ describe('ResumeUploadPage', () => {
       getByRole('button', { name: /^Upload and preview$/i })
     )
 
-    expect(useResumeStore.getState().resume).toMatchObject({
+    expect(useResumeStore.getState().resumes).toHaveLength(1)
+    expect(useResumeStore.getState().resumes[0]).toMatchObject({
       applicant: {
         email: 'ava@example.com',
         name: 'Ava Chen',
@@ -139,6 +140,44 @@ describe('ResumeUploadPage', () => {
       fileType: 'application/pdf',
       objectUrl: 'blob:resume',
     })
+    expect(navigate).toHaveBeenCalledWith({ to: '/resumes/preview' })
+  })
+
+  it('preserves existing uploaded resumes when adding another one', async () => {
+    createObjectURL
+      .mockReturnValueOnce('blob:existing-resume')
+      .mockReturnValueOnce('blob:new-resume')
+    useResumeStore.getState().addResume({
+      applicant: {
+        email: 'existing@example.com',
+        name: 'Existing Candidate',
+        positionApplied: 'Designer',
+      },
+      file: new File(['existing'], 'existing.pdf', {
+        type: 'application/pdf',
+      }),
+    })
+    const file = new File(['resume'], 'new-candidate.pdf', {
+      type: 'application/pdf',
+    })
+    const { getByLabelText, getByRole } = await renderResumeUploadPage()
+
+    await userEvent.type(getByLabelText('Name'), 'New Candidate')
+    await userEvent.type(getByLabelText('Email'), 'new@example.com')
+    await userEvent.type(
+      getByLabelText('Position applied for'),
+      'Frontend Engineer'
+    )
+    await userEvent.upload(getByLabelText('Resume PDF'), file)
+    await userEvent.click(
+      getByRole('button', { name: /^Upload and preview$/i })
+    )
+
+    expect(useResumeStore.getState().resumes).toHaveLength(2)
+    expect(
+      useResumeStore.getState().resumes.map((resume) => resume.fileName)
+    ).toEqual(['existing.pdf', 'new-candidate.pdf'])
+    expect(revokeObjectURL).not.toHaveBeenCalled()
     expect(navigate).toHaveBeenCalledWith({ to: '/resumes/preview' })
   })
 })
