@@ -1,6 +1,8 @@
 import {
   Construction,
   LayoutDashboard,
+  FileText,
+  FileUp,
   Monitor,
   Bug,
   ListTodo,
@@ -61,6 +63,16 @@ export const sidebarData: SidebarData = {
           title: 'Tasks',
           url: '/tasks',
           icon: ListTodo,
+        },
+        {
+          title: 'Resume Upload',
+          url: '/resumes/upload',
+          icon: FileUp,
+        },
+        {
+          title: 'Resume Preview',
+          url: '/resumes/preview',
+          icon: FileText,
         },
         {
           title: 'Apps',
