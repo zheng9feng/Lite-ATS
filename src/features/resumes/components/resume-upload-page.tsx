@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { FileUp } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -27,6 +29,7 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { uploadResume } from '../data/resume-api'
 import { useResumeStore } from '../data/resume-store'
 
 const formSchema = z.object({
@@ -61,6 +64,7 @@ function isPdf(file?: File) {
 export function ResumeUploadPage() {
   const navigate = useNavigate()
   const addResume = useResumeStore((state) => state.addResume)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -72,17 +76,31 @@ export function ResumeUploadPage() {
   })
   const fileRef = form.register('file')
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    addResume({
-      applicant: {
-        email: values.email.trim(),
-        name: values.name.trim(),
-        positionApplied: values.positionApplied.trim(),
-      },
-      file: values.file[0],
-    })
-    navigate({ to: '/resumes/preview' })
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setSubmitError(null)
+
+    try {
+      const resume = await uploadResume({
+        applicant: {
+          email: values.email.trim(),
+          name: values.name.trim(),
+          positionApplied: values.positionApplied.trim(),
+        },
+        file: values.file[0],
+      })
+
+      addResume(resume)
+      navigate({ to: '/resumes/preview' })
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to upload this resume. Please try again.'
+      )
+    }
   }
+
+  const isSubmitting = form.formState.isSubmitting
 
   return (
     <>
@@ -110,8 +128,8 @@ export function ResumeUploadPage() {
               <div>
                 <CardTitle>Upload PDF Resume</CardTitle>
                 <CardDescription>
-                  Choose a resume file from your device. The file is kept only
-                  in this browser session.
+                  Choose a resume file from your device. The API stores the PDF
+                  in MinIO for preview and limited-time sharing.
                 </CardDescription>
               </div>
             </div>
@@ -122,6 +140,11 @@ export function ResumeUploadPage() {
                 className='space-y-4'
                 onSubmit={form.handleSubmit(onSubmit)}
               >
+                {submitError ? (
+                  <Alert variant='destructive'>
+                    <AlertDescription>{submitError}</AlertDescription>
+                  </Alert>
+                ) : null}
                 <div className='grid gap-4 sm:grid-cols-2'>
                   <FormField
                     control={form.control}
@@ -193,7 +216,9 @@ export function ResumeUploadPage() {
                     </FormItem>
                   )}
                 />
-                <Button type='submit'>Upload and preview</Button>
+                <Button disabled={isSubmitting} type='submit'>
+                  {isSubmitting ? 'Uploading...' : 'Upload and preview'}
+                </Button>
               </form>
             </Form>
           </CardContent>

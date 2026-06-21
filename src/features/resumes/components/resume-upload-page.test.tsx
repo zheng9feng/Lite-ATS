@@ -9,6 +9,7 @@ import { useResumeStore } from '../data/resume-store'
 import { ResumeUploadPage } from './resume-upload-page'
 
 const navigate = vi.fn()
+const uploadResume = vi.fn()
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
@@ -17,6 +18,10 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     useNavigate: () => navigate,
   }
 })
+
+vi.mock('../data/resume-api', () => ({
+  uploadResume: (...args: unknown[]) => uploadResume(...args),
+}))
 
 vi.mock('@/components/config-drawer', () => ({
   ConfigDrawer: () => <div />,
@@ -46,20 +51,21 @@ function renderResumeUploadPage() {
 }
 
 describe('ResumeUploadPage', () => {
-  const createObjectURL = vi.fn()
-  const revokeObjectURL = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
     useResumeStore.setState({ resumes: [] })
-    createObjectURL.mockReturnValue('blob:resume')
-    Object.defineProperty(URL, 'createObjectURL', {
-      configurable: true,
-      value: createObjectURL,
-    })
-    Object.defineProperty(URL, 'revokeObjectURL', {
-      configurable: true,
-      value: revokeObjectURL,
+    uploadResume.mockResolvedValue({
+      applicant: {
+        email: 'ava@example.com',
+        name: 'Ava Chen',
+        positionApplied: 'Frontend Engineer',
+      },
+      fileName: 'candidate.pdf',
+      fileSize: 6,
+      fileType: 'application/pdf',
+      id: 'resume-1',
+      previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
+      uploadedAt: '2026-06-21T08:00:00.000Z',
     })
   })
 
@@ -129,33 +135,56 @@ describe('ResumeUploadPage', () => {
     )
 
     expect(useResumeStore.getState().resumes).toHaveLength(1)
-    expect(useResumeStore.getState().resumes[0]).toMatchObject({
+    expect(uploadResume).toHaveBeenCalledWith({
+      applicant: {
+        email: 'ava@example.com',
+        name: 'Ava Chen',
+        positionApplied: 'Frontend Engineer',
+      },
+      file,
+    })
+    expect(useResumeStore.getState().resumes[0]).toEqual({
       applicant: {
         email: 'ava@example.com',
         name: 'Ava Chen',
         positionApplied: 'Frontend Engineer',
       },
       fileName: 'candidate.pdf',
-      fileSize: file.size,
+      fileSize: 6,
       fileType: 'application/pdf',
-      objectUrl: 'blob:resume',
+      id: 'resume-1',
+      previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
+      uploadedAt: '2026-06-21T08:00:00.000Z',
     })
     expect(navigate).toHaveBeenCalledWith({ to: '/resumes/preview' })
   })
 
   it('preserves existing uploaded resumes when adding another one', async () => {
-    createObjectURL
-      .mockReturnValueOnce('blob:existing-resume')
-      .mockReturnValueOnce('blob:new-resume')
     useResumeStore.getState().addResume({
       applicant: {
         email: 'existing@example.com',
         name: 'Existing Candidate',
         positionApplied: 'Designer',
       },
-      file: new File(['existing'], 'existing.pdf', {
-        type: 'application/pdf',
-      }),
+      fileName: 'existing.pdf',
+      fileSize: 8,
+      fileType: 'application/pdf',
+      id: 'existing-resume',
+      previewUrl: 'http://localhost:3001/api/resumes/existing-resume/file',
+      uploadedAt: '2026-06-21T07:00:00.000Z',
+    })
+    uploadResume.mockResolvedValueOnce({
+      applicant: {
+        email: 'new@example.com',
+        name: 'New Candidate',
+        positionApplied: 'Frontend Engineer',
+      },
+      fileName: 'new-candidate.pdf',
+      fileSize: 6,
+      fileType: 'application/pdf',
+      id: 'new-resume',
+      previewUrl: 'http://localhost:3001/api/resumes/new-resume/file',
+      uploadedAt: '2026-06-21T08:00:00.000Z',
     })
     const file = new File(['resume'], 'new-candidate.pdf', {
       type: 'application/pdf',
@@ -177,7 +206,6 @@ describe('ResumeUploadPage', () => {
     expect(
       useResumeStore.getState().resumes.map((resume) => resume.fileName)
     ).toEqual(['existing.pdf', 'new-candidate.pdf'])
-    expect(revokeObjectURL).not.toHaveBeenCalled()
     expect(navigate).toHaveBeenCalledWith({ to: '/resumes/preview' })
   })
 })
