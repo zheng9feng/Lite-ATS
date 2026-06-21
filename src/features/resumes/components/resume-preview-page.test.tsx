@@ -9,6 +9,7 @@ import { useResumeStore } from '../data/resume-store'
 import { ResumePreviewPage } from './resume-preview-page'
 
 const createResumeShareLink = vi.fn()
+const listResumes = vi.fn()
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
@@ -28,6 +29,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 vi.mock('../data/resume-api', () => ({
   createResumeShareLink: (...args: unknown[]) => createResumeShareLink(...args),
+  listResumes: (...args: unknown[]) => listResumes(...args),
 }))
 
 vi.mock('sonner', () => ({
@@ -102,6 +104,19 @@ describe('ResumePreviewPage', () => {
       token: 'share-token',
     })
     useResumeStore.setState({ resumes: [] })
+    listResumes.mockImplementation(
+      async () => useResumeStore.getState().resumes
+    )
+  })
+
+  it('loads stored resumes from the API', async () => {
+    listResumes.mockResolvedValue([createStoredResume(1)])
+
+    const { getByText } = await renderResumePreviewPage()
+
+    await expect.element(getByText(/^Candidate 1$/)).toBeInTheDocument()
+    expect(listResumes).toHaveBeenCalledOnce()
+    expect(useResumeStore.getState().resumes).toHaveLength(1)
   })
 
   it('shows an empty state when no resumes have been uploaded', async () => {
@@ -113,6 +128,17 @@ describe('ResumePreviewPage', () => {
     await expect
       .element(getByRole('link', { name: /Upload a resume/i }))
       .toHaveAttribute('href', '/resumes/upload')
+  })
+
+  it('shows an error toast when stored resumes cannot load', async () => {
+    const { toast } = await import('sonner')
+    listResumes.mockRejectedValue(new Error('Unable to list resumes.'))
+
+    await renderResumePreviewPage()
+
+    await vi.waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('Unable to list resumes.')
+    )
   })
 
   it('renders uploaded applicants in a paginated table', async () => {

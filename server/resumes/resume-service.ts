@@ -33,14 +33,24 @@ export type UploadedResumeFile = {
   size: number
 }
 
-type StoredResumeRecord = StoredResume & {
+export type StoredResumeRecord = StoredResume & {
   objectName: string
 }
 
-type ShareRecord = {
+export type ShareRecord = {
   expiresAt: Date
   resumeId: string
   token: string
+}
+
+export type ResumeMetadataRepository = {
+  close: () => void
+  deleteShare: (token: string) => void
+  findResume: (resumeId: string) => StoredResumeRecord | undefined
+  findShare: (token: string) => ShareRecord | undefined
+  listResumes: () => StoredResumeRecord[]
+  saveResume: (resume: StoredResumeRecord) => void
+  saveShare: (share: ShareRecord) => void
 }
 
 export type ResumeObjectStorage = {
@@ -64,6 +74,7 @@ type CreateResumeServiceOptions = {
   createToken?: () => string
   getNow?: () => Date
   publicApiUrl: string
+  repository: ResumeMetadataRepository
   shareTtlMs?: number
   storage: ResumeObjectStorage
 }
@@ -100,11 +111,10 @@ export function createResumeService({
   createToken = randomUUID,
   getNow = () => new Date(),
   publicApiUrl,
+  repository,
   shareTtlMs = RESUME_SHARE_TTL_MS,
   storage,
 }: CreateResumeServiceOptions) {
-  const resumes = new Map<string, StoredResumeRecord>()
-  const shares = new Map<string, ShareRecord>()
   const normalizedPublicApiUrl = trimTrailingSlash(publicApiUrl)
 
   async function addResume({ applicant, file }: AddResumePayload) {
@@ -134,19 +144,23 @@ export function createResumeService({
       uploadedAt: uploadedAt.toISOString(),
     }
 
-    resumes.set(id, resume)
+    repository.saveResume(resume)
 
     return toPublicResume(resume)
   }
 
   function getResume(resumeId: string) {
-    const resume = resumes.get(resumeId)
+    const resume = repository.findResume(resumeId)
 
     if (!resume) {
       throw new Error('Resume not found')
     }
 
     return resume
+  }
+
+  function listResumes() {
+    return repository.listResumes().map((resume) => toPublicResume(resume))
   }
 
   async function getResumeFile(resumeId: string) {
@@ -168,7 +182,7 @@ export function createResumeService({
     const token = createToken()
     const expiresAt = new Date(getNow().getTime() + shareTtlMs)
 
-    shares.set(token, {
+    repository.saveShare({
       expiresAt,
       resumeId,
       token,
@@ -182,14 +196,14 @@ export function createResumeService({
   }
 
   function getSharedResume(token: string) {
-    const share = shares.get(token)
+    const share = repository.findShare(token)
 
     if (!share) {
       throw new Error('Share link not found')
     }
 
     if (share.expiresAt.getTime() <= getNow().getTime()) {
-      shares.delete(token)
+      repository.deleteShare(token)
       throw new Error('Share link has expired')
     }
 
@@ -215,5 +229,6 @@ export function createResumeService({
     getResumeFile,
     getSharedResume,
     getSharedResumeFile,
+    listResumes,
   }
 }

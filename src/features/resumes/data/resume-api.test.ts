@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createResumeShareLink, uploadResume } from './resume-api'
+import { createResumeShareLink, listResumes, uploadResume } from './resume-api'
 
 describe('resume API client', () => {
   const fetch = vi.fn()
@@ -64,5 +64,32 @@ describe('resume API client', () => {
     expect(share.shareUrl).toBe(
       'http://localhost:3001/api/resume-shares/share-token'
     )
+  })
+
+  it('lists stored resume metadata from the API', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => [
+        {
+          applicant: {
+            email: 'ava@example.com',
+            name: 'Ava Chen',
+            positionApplied: 'Frontend Engineer',
+          },
+          fileName: 'ava.pdf',
+          fileSize: 3,
+          fileType: 'application/pdf',
+          id: 'resume-1',
+          previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
+          uploadedAt: '2026-06-21T08:00:00.000Z',
+        },
+      ],
+    })
+
+    const resumes = await listResumes()
+
+    expect(fetch).toHaveBeenCalledWith('/api/resumes')
+    expect(resumes).toHaveLength(1)
+    expect(resumes[0]?.id).toBe('resume-1')
   })
 })

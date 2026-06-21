@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { resolveMinioConfig } from './config'
+import { resolveMinioConfig, resolveServerConfig } from './config'
+
+describe('resolveServerConfig', () => {
+  it('uses the default SQLite database path when none is configured', () => {
+    expect(resolveServerConfig({}).databasePath).toBe(
+      'server/.data/resumes.sqlite'
+    )
+  })
+
+  it('uses the configured SQLite database path', () => {
+    expect(
+      resolveServerConfig({
+        RESUME_DATABASE_PATH: '/tmp/lite-ats-resumes.sqlite',
+      }).databasePath
+    ).toBe('/tmp/lite-ats-resumes.sqlite')
+  })
+})
 
 describe('resolveMinioConfig', () => {
   it('uses MinIO root credential variables when API-specific variables are absent', () => {

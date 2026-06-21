@@ -92,4 +92,39 @@ describe('useResumeStore', () => {
 
     expect(useResumeStore.getState().resumes).toEqual([])
   })
+
+  it('replaces stored resume metadata with an API result', () => {
+    useResumeStore.getState().addResume({
+      applicant: {
+        email: 'old@example.com',
+        name: 'Old Candidate',
+        positionApplied: 'Designer',
+      },
+      fileName: 'old.pdf',
+      fileSize: 5,
+      fileType: 'application/pdf',
+      id: 'old-resume',
+      previewUrl: 'http://localhost:3001/api/resumes/old-resume/file',
+      uploadedAt: '2026-06-21T07:00:00.000Z',
+    })
+
+    useResumeStore.getState().setResumes([
+      {
+        applicant: {
+          email: 'new@example.com',
+          name: 'New Candidate',
+          positionApplied: 'Frontend Engineer',
+        },
+        fileName: 'new.pdf',
+        fileSize: 6,
+        fileType: 'application/pdf',
+        id: 'new-resume',
+        previewUrl: 'http://localhost:3001/api/resumes/new-resume/file',
+        uploadedAt: '2026-06-21T08:00:00.000Z',
+      },
+    ])
+
+    expect(useResumeStore.getState().resumes).toHaveLength(1)
+    expect(useResumeStore.getState().resumes[0]?.id).toBe('new-resume')
+  })
 })

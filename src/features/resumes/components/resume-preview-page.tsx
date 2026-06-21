@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   type ColumnDef,
@@ -33,7 +33,7 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { createResumeShareLink } from '../data/resume-api'
+import { createResumeShareLink, listResumes } from '../data/resume-api'
 import { type ResumeFile, useResumeStore } from '../data/resume-store'
 
 function formatFileSize(size: number) {
@@ -56,11 +56,43 @@ function openResumePreview(resume: ResumeFile) {
 
 export function ResumePreviewPage() {
   const resumes = useResumeStore((state) => state.resumes)
+  const setResumes = useResumeStore((state) => state.setResumes)
+  const [isLoadingResumes, setIsLoadingResumes] = useState(true)
   const [sharingResumeId, setSharingResumeId] = useState<string | null>(null)
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   })
+
+  useEffect(() => {
+    let isActive = true
+
+    async function loadResumes() {
+      try {
+        const storedResumes = await listResumes()
+
+        if (isActive) {
+          setResumes(storedResumes)
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Unable to load stored resumes.'
+        )
+      } finally {
+        if (isActive) {
+          setIsLoadingResumes(false)
+        }
+      }
+    }
+
+    void loadResumes()
+
+    return () => {
+      isActive = false
+    }
+  }, [setResumes])
 
   const copyShareLink = useCallback(async (resume: ResumeFile) => {
     setSharingResumeId(resume.id)
@@ -189,7 +221,16 @@ export function ResumePreviewPage() {
           </Button>
         </div>
 
-        {resumes.length > 0 ? (
+        {isLoadingResumes && resumes.length === 0 ? (
+          <Card className='max-w-2xl'>
+            <CardHeader>
+              <CardTitle>Loading resumes</CardTitle>
+              <CardDescription>
+                Checking stored resume metadata.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        ) : resumes.length > 0 ? (
           <div className='flex flex-1 flex-col gap-4'>
             <div className='overflow-hidden rounded-md border'>
               <Table>

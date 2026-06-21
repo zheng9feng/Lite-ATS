@@ -9,11 +9,19 @@ import { loadServerEnv, resolveServerConfig } from './config'
 import { createInlineContentDisposition } from './resumes/file-name'
 import { createMinioStorage } from './resumes/minio-storage'
 import { createResumeService } from './resumes/resume-service'
+import { migrateResumeDatabase } from './resumes/sqlite-resume-migrations'
+import { createSqliteResumeRepository } from './resumes/sqlite-resume-repository'
 
 loadServerEnv()
 
-const { bucketName, minio, publicApiUrl, resumeApiPort, shareTtlMinutes } =
-  resolveServerConfig()
+const {
+  bucketName,
+  databasePath,
+  minio,
+  publicApiUrl,
+  resumeApiPort,
+  shareTtlMinutes,
+} = resolveServerConfig()
 
 const upload = multer({
   limits: {
@@ -25,9 +33,12 @@ const upload = multer({
 const app = express()
 app.use(cors())
 
+await migrateResumeDatabase({ databasePath })
+
 const resumeService = createResumeService({
   bucketName,
   publicApiUrl,
+  repository: createSqliteResumeRepository({ databasePath }),
   shareTtlMs: shareTtlMinutes * 60 * 1000,
   storage: createMinioStorage(minio),
 })
@@ -70,6 +81,14 @@ function sendError(response: Response, error: unknown) {
 
 app.get('/api/health', (_request, response) => {
   response.json({ ok: true })
+})
+
+app.get('/api/resumes', (_request, response) => {
+  try {
+    response.json(resumeService.listResumes())
+  } catch (error) {
+    sendError(response, error)
+  }
 })
 
 app.post(

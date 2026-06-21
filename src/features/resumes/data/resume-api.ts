@@ -52,6 +52,12 @@ export async function uploadResume({
   return parseApiResponse<ResumeFile>(response)
 }
 
+export async function listResumes(): Promise<ResumeFile[]> {
+  const response = await fetch(apiUrl('/api/resumes'))
+
+  return parseApiResponse<ResumeFile[]>(response)
+}
+
 export async function createResumeShareLink(
   resumeId: string
 ): Promise<ResumeShareLink> {
