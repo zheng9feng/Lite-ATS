@@ -8,6 +8,8 @@ import { SidebarProvider } from '@/components/ui/sidebar'
 import { useResumeStore } from '../data/resume-store'
 import { ResumePreviewPage } from './resume-preview-page'
 
+const createResumeShareLink = vi.fn()
+
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return {
@@ -23,6 +25,17 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     ),
   }
 })
+
+vi.mock('../data/resume-api', () => ({
+  createResumeShareLink: (...args: unknown[]) => createResumeShareLink(...args),
+}))
+
+vi.mock('sonner', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}))
 
 vi.mock('@/components/config-drawer', () => ({
   ConfigDrawer: () => <div />,
@@ -62,19 +75,31 @@ function createStoredResume(index: number) {
     fileSize: 1024 * index,
     fileType: 'application/pdf',
     id: `resume-${index}`,
-    objectUrl: `blob:resume-${index}`,
+    previewUrl: `http://localhost:3001/api/resumes/resume-${index}/file`,
     uploadedAt: `2026-06-${String(index).padStart(2, '0')}T08:00:00.000Z`,
   }
 }
 
 describe('ResumePreviewPage', () => {
   const open = vi.fn()
+  const writeText = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
     Object.defineProperty(window, 'open', {
       configurable: true,
       value: open,
+    })
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText,
+      },
+    })
+    createResumeShareLink.mockResolvedValue({
+      expiresAt: '2026-06-21T09:00:00.000Z',
+      shareUrl: 'http://localhost:3001/api/resume-shares/share-token',
+      token: 'share-token',
     })
     useResumeStore.setState({ resumes: [] })
   })
@@ -151,9 +176,26 @@ describe('ResumePreviewPage', () => {
     )
 
     expect(open).toHaveBeenCalledWith(
-      'blob:resume-1',
+      'http://localhost:3001/api/resumes/resume-1/file',
       '_blank',
       'noopener,noreferrer'
+    )
+  })
+
+  it('copies a limited-time share link for the selected resume', async () => {
+    useResumeStore.setState({
+      resumes: [createStoredResume(1)],
+    })
+
+    const { getByRole } = await renderResumePreviewPage()
+
+    await userEvent.click(
+      getByRole('button', { name: /Share resume for Candidate 1/i })
+    )
+
+    expect(createResumeShareLink).toHaveBeenCalledWith('resume-1')
+    expect(writeText).toHaveBeenCalledWith(
+      'http://localhost:3001/api/resume-shares/share-token'
     )
   })
 })

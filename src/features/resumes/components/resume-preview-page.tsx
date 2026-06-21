@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   type ColumnDef,
@@ -8,7 +8,8 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { ExternalLink, FileText, Upload } from 'lucide-react'
+import { ExternalLink, FileText, Share2, Upload } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -32,6 +33,7 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { createResumeShareLink } from '../data/resume-api'
 import { type ResumeFile, useResumeStore } from '../data/resume-store'
 
 function formatFileSize(size: number) {
@@ -49,15 +51,35 @@ function formatUploadedAt(value: string) {
 }
 
 function openResumePreview(resume: ResumeFile) {
-  window.open(resume.objectUrl, '_blank', 'noopener,noreferrer')
+  window.open(resume.previewUrl, '_blank', 'noopener,noreferrer')
 }
 
 export function ResumePreviewPage() {
   const resumes = useResumeStore((state) => state.resumes)
+  const [sharingResumeId, setSharingResumeId] = useState<string | null>(null)
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   })
+
+  const copyShareLink = useCallback(async (resume: ResumeFile) => {
+    setSharingResumeId(resume.id)
+
+    try {
+      const share = await createResumeShareLink(resume.id)
+      await navigator.clipboard.writeText(share.shareUrl)
+      toast.success('Share link copied to clipboard.')
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Unable to create a share link.'
+      )
+    } finally {
+      setSharingResumeId(null)
+    }
+  }, [])
+
   const columns = useMemo<ColumnDef<ResumeFile>[]>(
     () => [
       {
@@ -97,7 +119,18 @@ export function ResumePreviewPage() {
       {
         id: 'actions',
         cell: ({ row }) => (
-          <div className='flex justify-end'>
+          <div className='flex justify-end gap-2'>
+            <Button
+              aria-label={`Share resume for ${row.original.applicant.name}`}
+              disabled={sharingResumeId === row.original.id}
+              size='sm'
+              type='button'
+              variant='outline'
+              onClick={() => void copyShareLink(row.original)}
+            >
+              <Share2 />
+              Share
+            </Button>
             <Button
               aria-label={`Preview resume for ${row.original.applicant.name}`}
               size='sm'
@@ -113,7 +146,7 @@ export function ResumePreviewPage() {
         enableHiding: false,
       },
     ],
-    []
+    [copyShareLink, sharingResumeId]
   )
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -145,7 +178,7 @@ export function ResumePreviewPage() {
             </h2>
             <p className='text-muted-foreground'>
               Review applicants with uploaded PDF resumes and open each resume
-              in a new tab.
+              in a new tab or copy a limited-time share link.
             </p>
           </div>
           <Button asChild variant='outline'>
