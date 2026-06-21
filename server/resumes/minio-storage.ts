@@ -15,6 +15,8 @@ export function createMinioStorage(
   const client = new Client(options)
 
   return {
+    deleteObject: ({ bucketName, objectName }) =>
+      client.removeObject(bucketName, objectName),
     ensureBucket: async (bucketName) => {
       const exists = await client.bucketExists(bucketName)
 

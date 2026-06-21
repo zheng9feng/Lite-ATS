@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createResumeShareLink, listResumes, uploadResume } from './resume-api'
+import {
+  createResumeShareLink,
+  deleteResume,
+  listResumes,
+  updateResume,
+  uploadResume,
+} from './resume-api'
 
 describe('resume API client', () => {
   const fetch = vi.fn()
@@ -91,5 +97,57 @@ describe('resume API client', () => {
     expect(fetch).toHaveBeenCalledWith('/api/resumes')
     expect(resumes).toHaveLength(1)
     expect(resumes[0]?.id).toBe('resume-1')
+  })
+
+  it('updates resume metadata and optionally sends a replacement PDF', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        applicant: {
+          email: 'ava.updated@example.com',
+          name: 'Ava Updated',
+          positionApplied: 'Product Engineer',
+        },
+        fileName: 'ava-updated.pdf',
+        fileSize: 7,
+        fileType: 'application/pdf',
+        id: 'resume-1',
+        previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
+        uploadedAt: '2026-06-21T08:00:00.000Z',
+      }),
+    })
+
+    const file = new File(['pdf'], 'ava-updated.pdf', {
+      type: 'application/pdf',
+    })
+    const resume = await updateResume({
+      applicant: {
+        email: 'ava.updated@example.com',
+        name: 'Ava Updated',
+        positionApplied: 'Product Engineer',
+      },
+      file,
+      resumeId: 'resume-1',
+    })
+
+    expect(fetch).toHaveBeenCalledWith('/api/resumes/resume-1', {
+      body: expect.any(FormData),
+      method: 'PATCH',
+    })
+    expect(resume.applicant.email).toBe('ava.updated@example.com')
+    expect(resume.fileName).toBe('ava-updated.pdf')
+  })
+
+  it('deletes a stored resume from the API', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      status: 204,
+    })
+
+    await deleteResume('resume-1')
+
+    expect(fetch).toHaveBeenCalledWith('/api/resumes/resume-1', {
+      method: 'DELETE',
+    })
   })
 })

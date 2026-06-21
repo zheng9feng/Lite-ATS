@@ -11,6 +11,12 @@ type UploadResumePayload = {
   file: File
 }
 
+type UpdateResumePayload = {
+  applicant: ResumeApplicant
+  file?: File
+  resumeId: string
+}
+
 const apiBaseUrl = import.meta.env.VITE_RESUME_API_BASE_URL ?? ''
 
 function apiUrl(path: string) {
@@ -56,6 +62,40 @@ export async function listResumes(): Promise<ResumeFile[]> {
   const response = await fetch(apiUrl('/api/resumes'))
 
   return parseApiResponse<ResumeFile[]>(response)
+}
+
+export async function updateResume({
+  applicant,
+  file,
+  resumeId,
+}: UpdateResumePayload): Promise<ResumeFile> {
+  const body = new FormData()
+  body.append('name', applicant.name)
+  body.append('email', applicant.email)
+  body.append('positionApplied', applicant.positionApplied)
+
+  if (file) {
+    body.append('resume', file)
+  }
+
+  const response = await fetch(apiUrl(`/api/resumes/${resumeId}`), {
+    body,
+    method: 'PATCH',
+  })
+
+  return parseApiResponse<ResumeFile>(response)
+}
+
+export async function deleteResume(resumeId: string): Promise<void> {
+  const response = await fetch(apiUrl(`/api/resumes/${resumeId}`), {
+    method: 'DELETE',
+  })
+
+  if (response.ok) {
+    return
+  }
+
+  await parseApiResponse<never>(response)
 }
 
 export async function createResumeShareLink(

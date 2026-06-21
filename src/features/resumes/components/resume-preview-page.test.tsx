@@ -9,7 +9,9 @@ import { useResumeStore } from '../data/resume-store'
 import { ResumePreviewPage } from './resume-preview-page'
 
 const createResumeShareLink = vi.fn()
+const deleteResume = vi.fn()
 const listResumes = vi.fn()
+const updateResume = vi.fn()
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
@@ -29,7 +31,9 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 vi.mock('../data/resume-api', () => ({
   createResumeShareLink: (...args: unknown[]) => createResumeShareLink(...args),
+  deleteResume: (...args: unknown[]) => deleteResume(...args),
   listResumes: (...args: unknown[]) => listResumes(...args),
+  updateResume: (...args: unknown[]) => updateResume(...args),
 }))
 
 vi.mock('sonner', () => ({
@@ -103,6 +107,13 @@ describe('ResumePreviewPage', () => {
       shareUrl: 'http://localhost:3001/api/resume-shares/share-token',
       token: 'share-token',
     })
+    deleteResume.mockResolvedValue(undefined)
+    updateResume.mockImplementation(async (payload) => ({
+      ...createStoredResume(1),
+      applicant: payload.applicant,
+      fileName: payload.file?.name ?? 'candidate-1.pdf',
+      fileSize: payload.file?.size ?? 1024,
+    }))
     useResumeStore.setState({ resumes: [] })
     listResumes.mockImplementation(
       async () => useResumeStore.getState().resumes
@@ -223,5 +234,74 @@ describe('ResumePreviewPage', () => {
     expect(writeText).toHaveBeenCalledWith(
       'http://localhost:3001/api/resume-shares/share-token'
     )
+  })
+
+  it('edits applicant metadata and replaces the PDF from the preview table', async () => {
+    useResumeStore.setState({
+      resumes: [createStoredResume(1)],
+    })
+    const file = new File(['updated'], 'updated.pdf', {
+      type: 'application/pdf',
+    })
+
+    const { getByLabelText, getByRole, getByText } =
+      await renderResumePreviewPage()
+
+    await userEvent.click(
+      getByRole('button', { name: /Edit resume for Candidate 1/i })
+    )
+    await userEvent.fill(getByLabelText('Name'), 'Updated Candidate')
+    await userEvent.fill(getByLabelText('Email'), 'updated@example.com')
+    await userEvent.fill(
+      getByLabelText('Position applied for'),
+      'Product Engineer'
+    )
+    await userEvent.upload(getByLabelText('Replacement PDF'), file)
+    await userEvent.click(getByRole('button', { name: /Save changes/i }))
+
+    await vi.waitFor(() =>
+      expect(updateResume).toHaveBeenCalledWith({
+        applicant: {
+          email: 'updated@example.com',
+          name: 'Updated Candidate',
+          positionApplied: 'Product Engineer',
+        },
+        file,
+        resumeId: 'resume-1',
+      })
+    )
+    await expect.element(getByText(/^Updated Candidate$/)).toBeInTheDocument()
+    await expect.element(getByText('updated@example.com')).toBeInTheDocument()
+    expect(useResumeStore.getState().resumes[0]?.fileName).toBe('updated.pdf')
+  })
+
+  it('deletes a resume after confirming the applicant email', async () => {
+    useResumeStore.setState({
+      resumes: [createStoredResume(1)],
+    })
+
+    const { getByLabelText, getByRole, getByText } =
+      await renderResumePreviewPage()
+
+    await userEvent.click(
+      getByRole('button', { name: /Delete resume for Candidate 1/i })
+    )
+    await expect
+      .element(getByText(/This will permanently delete candidate-1.pdf/i))
+      .toBeInTheDocument()
+
+    await userEvent.fill(
+      getByLabelText('Applicant email:'),
+      'candidate1@example.com'
+    )
+    await userEvent.click(getByRole('button', { name: /^Delete$/i }))
+
+    await vi.waitFor(() =>
+      expect(deleteResume).toHaveBeenCalledWith('resume-1')
+    )
+    await expect
+      .element(getByText('No resume ready to preview'))
+      .toBeInTheDocument()
+    expect(useResumeStore.getState().resumes).toEqual([])
   })
 })

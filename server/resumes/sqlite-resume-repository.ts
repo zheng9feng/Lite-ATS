@@ -147,9 +147,16 @@ export function createSqliteResumeRepository({
     DELETE FROM resume_shares
     WHERE token = ?
   `)
+  const deleteResume = database.prepare<string>(`
+    DELETE FROM resumes
+    WHERE id = ?
+  `)
 
   return {
     close: () => database.close(),
+    deleteResume: (resumeId) => {
+      deleteResume.run(resumeId)
+    },
     deleteShare: (token) => {
       deleteShare.run(token)
     },

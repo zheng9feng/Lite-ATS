@@ -118,6 +118,47 @@ app.post(
   }
 )
 
+app.patch(
+  '/api/resumes/:resumeId',
+  upload.single('resume'),
+  async (request: Request, response: Response) => {
+    try {
+      const file = request.file ? requirePdf(request.file) : undefined
+      const resume = await resumeService.updateResume(
+        String(request.params.resumeId),
+        {
+          applicant: {
+            email: String(request.body.email ?? '').trim(),
+            name: String(request.body.name ?? '').trim(),
+            positionApplied: String(request.body.positionApplied ?? '').trim(),
+          },
+          file: file
+            ? {
+                buffer: file.buffer,
+                mimetype: file.mimetype,
+                originalname: file.originalname,
+                size: file.size,
+              }
+            : undefined,
+        }
+      )
+
+      response.json(resume)
+    } catch (error) {
+      sendError(response, error)
+    }
+  }
+)
+
+app.delete('/api/resumes/:resumeId', async (request, response) => {
+  try {
+    await resumeService.deleteResume(String(request.params.resumeId))
+    response.status(204).send()
+  } catch (error) {
+    sendError(response, error)
+  }
+})
+
 app.get('/api/resumes/:resumeId/file', async (request, response) => {
   try {
     const { resume, stream } = await resumeService.getResumeFile(

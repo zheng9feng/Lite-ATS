@@ -58,4 +58,38 @@ describe('createSqliteResumeRepository', () => {
 
     repository.close()
   })
+
+  it('deletes stored resumes and cascades share rows', async () => {
+    const databasePath = join(tempDir, 'resumes.sqlite')
+    await migrateResumeDatabase({ databasePath })
+
+    const repository = createSqliteResumeRepository({ databasePath })
+
+    repository.saveResume({
+      applicant: {
+        email: 'ava@example.com',
+        name: 'Ava Chen',
+        positionApplied: 'Frontend Engineer',
+      },
+      fileName: 'ava.pdf',
+      fileSize: 3,
+      fileType: 'application/pdf',
+      id: 'resume-1',
+      objectName: 'resumes/resume-1/ava.pdf',
+      previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
+      uploadedAt: '2026-06-21T08:00:00.000Z',
+    })
+    repository.saveShare({
+      expiresAt: new Date('2026-06-21T09:00:00.000Z'),
+      resumeId: 'resume-1',
+      token: 'share-token',
+    })
+
+    repository.deleteResume('resume-1')
+
+    expect(repository.findResume('resume-1')).toBeUndefined()
+    expect(repository.findShare('share-token')).toBeUndefined()
+
+    repository.close()
+  })
 })

@@ -21,6 +21,14 @@ function createMemoryResumeRepository(): ResumeMetadataRepository {
 
   return {
     close: () => undefined,
+    deleteResume: (resumeId) => {
+      resumes.delete(resumeId)
+      for (const [token, share] of shares) {
+        if (share.resumeId === resumeId) {
+          shares.delete(token)
+        }
+      }
+    },
     deleteShare: (token) => {
       shares.delete(token)
     },
@@ -41,6 +49,7 @@ function createMemoryResumeRepository(): ResumeMetadataRepository {
 
 describe('createResumeService', () => {
   const storage = {
+    deleteObject: vi.fn(),
     ensureBucket: vi.fn(),
     getObject: vi.fn(),
     putObject: vi.fn(),
@@ -166,6 +175,148 @@ describe('createResumeService', () => {
 
     expect(() => service.getSharedResume('share-token')).toThrow(
       'Share link has expired'
+    )
+  })
+
+  it('updates applicant metadata without replacing the stored PDF', async () => {
+    const service = createResumeService({
+      bucketName: 'resumes',
+      createId,
+      createToken,
+      getNow,
+      publicApiUrl: 'http://localhost:3001',
+      repository: createMemoryResumeRepository(),
+      storage,
+    })
+    await service.addResume({
+      applicant: {
+        email: 'ava@example.com',
+        name: 'Ava Chen',
+        positionApplied: 'Frontend Engineer',
+      },
+      file: {
+        buffer: Buffer.from('pdf'),
+        mimetype: 'application/pdf',
+        originalname: 'ava.pdf',
+        size: 3,
+      },
+    })
+
+    const resume = await service.updateResume('resume-1', {
+      applicant: {
+        email: 'ava.updated@example.com',
+        name: 'Ava Updated',
+        positionApplied: 'Product Engineer',
+      },
+    })
+
+    expect(resume).toMatchObject({
+      applicant: {
+        email: 'ava.updated@example.com',
+        name: 'Ava Updated',
+        positionApplied: 'Product Engineer',
+      },
+      fileName: 'ava.pdf',
+      fileSize: 3,
+      id: 'resume-1',
+      uploadedAt: now.toISOString(),
+    })
+    expect(storage.putObject).toHaveBeenCalledTimes(1)
+    expect(storage.deleteObject).not.toHaveBeenCalled()
+  })
+
+  it('replaces the stored PDF and deletes the previous object', async () => {
+    const service = createResumeService({
+      bucketName: 'resumes',
+      createId,
+      createToken,
+      getNow,
+      publicApiUrl: 'http://localhost:3001',
+      repository: createMemoryResumeRepository(),
+      storage,
+    })
+    await service.addResume({
+      applicant: {
+        email: 'ava@example.com',
+        name: 'Ava Chen',
+        positionApplied: 'Frontend Engineer',
+      },
+      file: {
+        buffer: Buffer.from('old pdf'),
+        mimetype: 'application/pdf',
+        originalname: 'ava.pdf',
+        size: 7,
+      },
+    })
+
+    const resume = await service.updateResume('resume-1', {
+      applicant: {
+        email: 'ava@example.com',
+        name: 'Ava Chen',
+        positionApplied: 'Frontend Engineer',
+      },
+      file: {
+        buffer: Buffer.from('new pdf'),
+        mimetype: 'application/pdf',
+        originalname: 'ava updated.pdf',
+        size: 7,
+      },
+    })
+
+    expect(storage.putObject).toHaveBeenLastCalledWith({
+      body: Buffer.from('new pdf'),
+      bucketName: 'resumes',
+      contentType: 'application/pdf',
+      objectName: 'resumes/resume-1/ava-updated.pdf',
+      size: 7,
+    })
+    expect(storage.deleteObject).toHaveBeenCalledWith({
+      bucketName: 'resumes',
+      objectName: 'resumes/resume-1/ava.pdf',
+    })
+    expect(resume).toMatchObject({
+      fileName: 'ava updated.pdf',
+      fileSize: 7,
+      id: 'resume-1',
+      previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
+      uploadedAt: now.toISOString(),
+    })
+  })
+
+  it('deletes stored PDF metadata, object storage, and share access', async () => {
+    const service = createResumeService({
+      bucketName: 'resumes',
+      createId,
+      createToken,
+      getNow,
+      publicApiUrl: 'http://localhost:3001',
+      repository: createMemoryResumeRepository(),
+      storage,
+    })
+    await service.addResume({
+      applicant: {
+        email: 'ava@example.com',
+        name: 'Ava Chen',
+        positionApplied: 'Frontend Engineer',
+      },
+      file: {
+        buffer: Buffer.from('pdf'),
+        mimetype: 'application/pdf',
+        originalname: 'ava.pdf',
+        size: 3,
+      },
+    })
+    service.createShareLink('resume-1')
+
+    await service.deleteResume('resume-1')
+
+    expect(storage.deleteObject).toHaveBeenCalledWith({
+      bucketName: 'resumes',
+      objectName: 'resumes/resume-1/ava.pdf',
+    })
+    expect(service.listResumes()).toEqual([])
+    expect(() => service.getSharedResume('share-token')).toThrow(
+      'Share link not found'
     )
   })
 

@@ -20,7 +20,9 @@ type ResumeStore = {
   resumes: ResumeFile[]
   addResume: (resume: ResumeFile) => void
   clearResumes: () => void
+  removeResume: (resumeId: string) => void
   setResumes: (resumes: ResumeFile[]) => void
+  updateResume: (resume: ResumeFile) => void
 }
 
 export const useResumeStore = create<ResumeStore>((set) => ({
@@ -33,7 +35,19 @@ export const useResumeStore = create<ResumeStore>((set) => ({
   clearResumes: () => {
     set({ resumes: [] })
   },
+  removeResume: (resumeId) => {
+    set((state) => ({
+      resumes: state.resumes.filter((resume) => resume.id !== resumeId),
+    }))
+  },
   setResumes: (resumes) => {
     set({ resumes })
+  },
+  updateResume: (resume) => {
+    set((state) => ({
+      resumes: state.resumes.map((storedResume) =>
+        storedResume.id === resume.id ? resume : storedResume
+      ),
+    }))
   },
 }))

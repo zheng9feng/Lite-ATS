@@ -45,6 +45,7 @@ export type ShareRecord = {
 
 export type ResumeMetadataRepository = {
   close: () => void
+  deleteResume: (resumeId: string) => void
   deleteShare: (token: string) => void
   findResume: (resumeId: string) => StoredResumeRecord | undefined
   findShare: (token: string) => ShareRecord | undefined
@@ -54,6 +55,10 @@ export type ResumeMetadataRepository = {
 }
 
 export type ResumeObjectStorage = {
+  deleteObject: (payload: {
+    bucketName: string
+    objectName: string
+  }) => Promise<void>
   ensureBucket: (bucketName: string) => Promise<void>
   getObject: (payload: {
     bucketName: string
@@ -82,6 +87,11 @@ type CreateResumeServiceOptions = {
 type AddResumePayload = {
   applicant: ResumeApplicant
   file: UploadedResumeFile
+}
+
+type UpdateResumePayload = {
+  applicant: ResumeApplicant
+  file?: UploadedResumeFile
 }
 
 function trimTrailingSlash(value: string) {
@@ -147,6 +157,51 @@ export function createResumeService({
     repository.saveResume(resume)
 
     return toPublicResume(resume)
+  }
+
+  async function updateResume(
+    resumeId: string,
+    { applicant, file }: UpdateResumePayload
+  ) {
+    const currentResume = getResume(resumeId)
+    let nextResume: StoredResumeRecord = {
+      ...currentResume,
+      applicant,
+    }
+
+    if (file) {
+      const fileName = normalizeUploadedFileName(file.originalname)
+      const objectName = `resumes/${resumeId}/${sanitizeFileName(fileName)}`
+      const fileType = file.mimetype || 'application/pdf'
+
+      await storage.ensureBucket(bucketName)
+      await storage.putObject({
+        body: file.buffer,
+        bucketName,
+        contentType: fileType,
+        objectName,
+        size: file.size,
+      })
+
+      nextResume = {
+        ...nextResume,
+        fileName,
+        fileSize: file.size,
+        fileType,
+        objectName,
+      }
+    }
+
+    repository.saveResume(nextResume)
+
+    if (file && currentResume.objectName !== nextResume.objectName) {
+      await storage.deleteObject({
+        bucketName,
+        objectName: currentResume.objectName,
+      })
+    }
+
+    return toPublicResume(nextResume)
   }
 
   function getResume(resumeId: string) {
@@ -223,12 +278,24 @@ export function createResumeService({
     }
   }
 
+  async function deleteResume(resumeId: string) {
+    const resume = getResume(resumeId)
+
+    await storage.deleteObject({
+      bucketName,
+      objectName: resume.objectName,
+    })
+    repository.deleteResume(resumeId)
+  }
+
   return {
     addResume,
     createShareLink,
+    deleteResume,
     getResumeFile,
     getSharedResume,
     getSharedResumeFile,
     listResumes,
+    updateResume,
   }
 }
