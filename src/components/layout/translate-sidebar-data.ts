@@ -27,7 +27,6 @@ const NAV_TITLE_KEYS: Record<string, string> = {
   Profile: 'navigation.profile',
   'Resume Preview': 'navigation.resumePreview',
   'Resume Upload': 'navigation.resumeUpload',
-  'Secured by Clerk': 'navigation.securedByClerk',
   Settings: 'navigation.settings',
   'Sign In': 'navigation.signIn',
   'Sign In (2 Col)': 'navigation.signInTwoColumn',
