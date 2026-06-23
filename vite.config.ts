@@ -21,6 +21,15 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    include: [
+      '@radix-ui/react-checkbox',
+      '@radix-ui/react-switch',
+      'date-fns',
+      'date-fns/locale',
+      'react-day-picker',
+    ],
+  },
   server: {
     proxy: {
       '/api': {

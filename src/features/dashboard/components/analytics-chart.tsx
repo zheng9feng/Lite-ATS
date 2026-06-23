@@ -1,44 +1,59 @@
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 
-const data = [
+const analyticsValues = [
   {
-    name: 'Mon',
     clicks: Math.floor(Math.random() * 900) + 100,
     uniques: Math.floor(Math.random() * 700) + 80,
   },
   {
-    name: 'Tue',
     clicks: Math.floor(Math.random() * 900) + 100,
     uniques: Math.floor(Math.random() * 700) + 80,
   },
   {
-    name: 'Wed',
     clicks: Math.floor(Math.random() * 900) + 100,
     uniques: Math.floor(Math.random() * 700) + 80,
   },
   {
-    name: 'Thu',
     clicks: Math.floor(Math.random() * 900) + 100,
     uniques: Math.floor(Math.random() * 700) + 80,
   },
   {
-    name: 'Fri',
     clicks: Math.floor(Math.random() * 900) + 100,
     uniques: Math.floor(Math.random() * 700) + 80,
   },
   {
-    name: 'Sat',
     clicks: Math.floor(Math.random() * 900) + 100,
     uniques: Math.floor(Math.random() * 700) + 80,
   },
   {
-    name: 'Sun',
     clicks: Math.floor(Math.random() * 900) + 100,
     uniques: Math.floor(Math.random() * 700) + 80,
   },
 ]
 
+const weekdayKeys = [
+  'dashboard.weekdays.mon',
+  'dashboard.weekdays.tue',
+  'dashboard.weekdays.wed',
+  'dashboard.weekdays.thu',
+  'dashboard.weekdays.fri',
+  'dashboard.weekdays.sat',
+  'dashboard.weekdays.sun',
+]
+
 export function AnalyticsChart() {
+  const { t } = useTranslation()
+  const data = useMemo(
+    () =>
+      analyticsValues.map((value, index) => ({
+        ...value,
+        name: t(weekdayKeys[index]),
+      })),
+    [t]
+  )
+
   return (
     <ResponsiveContainer width='100%' height={300}>
       <AreaChart data={data}>

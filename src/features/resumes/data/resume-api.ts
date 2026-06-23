@@ -1,3 +1,4 @@
+import { i18n } from '@/lib/i18n'
 import { type ResumeApplicant, type ResumeFile } from './resume-store'
 
 export type ResumeShareLink = {
@@ -28,7 +29,7 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
     return response.json() as Promise<T>
   }
 
-  let message = 'Resume API request failed.'
+  let message = i18n.t('resumes.api.failed')
 
   try {
     const body = (await response.json()) as { error?: string }

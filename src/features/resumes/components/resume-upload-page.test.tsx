@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
 import { DirectionProvider } from '@/context/direction-provider'
+import { LanguageProvider } from '@/context/language-provider'
 import { LayoutProvider } from '@/context/layout-provider'
 import { ThemeProvider } from '@/context/theme-provider'
 import { SidebarProvider } from '@/components/ui/sidebar'
@@ -39,13 +40,15 @@ vi.mock('@/components/theme-switch', () => ({
 function renderResumeUploadPage() {
   return render(
     <DirectionProvider>
-      <ThemeProvider>
-        <LayoutProvider>
-          <SidebarProvider>
-            <ResumeUploadPage />
-          </SidebarProvider>
-        </LayoutProvider>
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider>
+          <LayoutProvider>
+            <SidebarProvider>
+              <ResumeUploadPage />
+            </SidebarProvider>
+          </LayoutProvider>
+        </ThemeProvider>
+      </LanguageProvider>
     </DirectionProvider>
   )
 }
@@ -72,22 +75,14 @@ describe('ResumeUploadPage', () => {
   it('shows validation when submitting an empty form', async () => {
     const { getByRole, getByText } = await renderResumeUploadPage()
 
-    await userEvent.click(
-      getByRole('button', { name: /^Upload and preview$/i })
-    )
+    await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
 
+    await expect.element(getByText('请输入申请人姓名。')).toBeInTheDocument()
     await expect
-      .element(getByText('Please enter the applicant name.'))
+      .element(getByText('请输入有效的邮箱地址。'))
       .toBeInTheDocument()
-    await expect
-      .element(getByText('Please enter a valid email address.'))
-      .toBeInTheDocument()
-    await expect
-      .element(getByText('Please enter the position applied for.'))
-      .toBeInTheDocument()
-    await expect
-      .element(getByText('Please upload a PDF resume.'))
-      .toBeInTheDocument()
+    await expect.element(getByText('请输入申请职位。')).toBeInTheDocument()
+    await expect.element(getByText('请上传 PDF 简历。')).toBeInTheDocument()
     expect(navigate).not.toHaveBeenCalled()
     expect(useResumeStore.getState().resumes).toEqual([])
   })
@@ -96,23 +91,16 @@ describe('ResumeUploadPage', () => {
     const { getByLabelText, getByRole, getByText } =
       await renderResumeUploadPage()
 
-    await userEvent.type(getByLabelText('Name'), 'Ava Chen')
-    await userEvent.type(getByLabelText('Email'), 'ava@example.com')
-    await userEvent.type(
-      getByLabelText('Position applied for'),
-      'Frontend Engineer'
-    )
+    await userEvent.type(getByLabelText('姓名'), 'Ava Chen')
+    await userEvent.type(getByLabelText('邮箱'), 'ava@example.com')
+    await userEvent.type(getByLabelText('申请职位'), 'Frontend Engineer')
     await userEvent.upload(
-      getByLabelText('Resume PDF'),
+      getByLabelText('简历 PDF'),
       new File(['not pdf'], 'resume.txt', { type: 'text/plain' })
     )
-    await userEvent.click(
-      getByRole('button', { name: /^Upload and preview$/i })
-    )
+    await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
 
-    await expect
-      .element(getByText('Please upload a PDF file.'))
-      .toBeInTheDocument()
+    await expect.element(getByText('请上传 PDF 文件。')).toBeInTheDocument()
     expect(navigate).not.toHaveBeenCalled()
     expect(useResumeStore.getState().resumes).toEqual([])
   })
@@ -123,16 +111,11 @@ describe('ResumeUploadPage', () => {
     })
     const { getByLabelText, getByRole } = await renderResumeUploadPage()
 
-    await userEvent.type(getByLabelText('Name'), 'Ava Chen')
-    await userEvent.type(getByLabelText('Email'), 'ava@example.com')
-    await userEvent.type(
-      getByLabelText('Position applied for'),
-      'Frontend Engineer'
-    )
-    await userEvent.upload(getByLabelText('Resume PDF'), file)
-    await userEvent.click(
-      getByRole('button', { name: /^Upload and preview$/i })
-    )
+    await userEvent.type(getByLabelText('姓名'), 'Ava Chen')
+    await userEvent.type(getByLabelText('邮箱'), 'ava@example.com')
+    await userEvent.type(getByLabelText('申请职位'), 'Frontend Engineer')
+    await userEvent.upload(getByLabelText('简历 PDF'), file)
+    await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
 
     expect(useResumeStore.getState().resumes).toHaveLength(1)
     expect(uploadResume).toHaveBeenCalledWith({
@@ -191,16 +174,11 @@ describe('ResumeUploadPage', () => {
     })
     const { getByLabelText, getByRole } = await renderResumeUploadPage()
 
-    await userEvent.type(getByLabelText('Name'), 'New Candidate')
-    await userEvent.type(getByLabelText('Email'), 'new@example.com')
-    await userEvent.type(
-      getByLabelText('Position applied for'),
-      'Frontend Engineer'
-    )
-    await userEvent.upload(getByLabelText('Resume PDF'), file)
-    await userEvent.click(
-      getByRole('button', { name: /^Upload and preview$/i })
-    )
+    await userEvent.type(getByLabelText('姓名'), 'New Candidate')
+    await userEvent.type(getByLabelText('邮箱'), 'new@example.com')
+    await userEvent.type(getByLabelText('申请职位'), 'Frontend Engineer')
+    await userEvent.upload(getByLabelText('简历 PDF'), file)
+    await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
 
     expect(useResumeStore.getState().resumes).toHaveLength(2)
     expect(

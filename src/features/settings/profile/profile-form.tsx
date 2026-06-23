@@ -1,7 +1,9 @@
+import { useMemo } from 'react'
 import { z } from 'zod'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from '@tanstack/react-router'
+import { Trans, useTranslation } from 'react-i18next'
 import { showSubmittedData } from '@/lib/show-submitted-data'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -24,39 +26,50 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 
-const profileFormSchema = z.object({
-  username: z
-    .string('Please enter your username.')
-    .min(2, 'Username must be at least 2 characters.')
-    .max(30, 'Username must not be longer than 30 characters.'),
-  email: z.email({
-    error: (iss) =>
-      iss.input === undefined
-        ? 'Please select an email to display.'
-        : undefined,
-  }),
-  bio: z.string().max(160).min(4),
-  urls: z
-    .array(
-      z.object({
-        value: z.url('Please enter a valid URL.'),
-      })
-    )
-    .optional(),
-})
+type TranslationFunction = (key: string) => string
 
-type ProfileFormValues = z.infer<typeof profileFormSchema>
-
-// This can come from your database or API.
-const defaultValues: Partial<ProfileFormValues> = {
-  bio: 'I own a computer.',
-  urls: [
-    { value: 'https://shadcn.com' },
-    { value: 'http://twitter.com/shadcn' },
-  ],
+function createProfileFormSchema(t: TranslationFunction) {
+  return z.object({
+    username: z
+      .string(t('settingsPage.profile.validation.username'))
+      .min(2, t('settingsPage.profile.validation.usernameMin'))
+      .max(30, t('settingsPage.profile.validation.usernameMax')),
+    email: z.email({
+      error: (iss) =>
+        iss.input === undefined
+          ? t('settingsPage.profile.validation.email')
+          : undefined,
+    }),
+    bio: z
+      .string()
+      .max(160, t('settingsPage.profile.validation.bioMax'))
+      .min(4, t('settingsPage.profile.validation.bioMin')),
+    urls: z
+      .array(
+        z.object({
+          value: z.url(t('settingsPage.profile.validation.url')),
+        })
+      )
+      .optional(),
+  })
 }
 
+type ProfileFormValues = z.infer<ReturnType<typeof createProfileFormSchema>>
+
 export function ProfileForm() {
+  const { t } = useTranslation()
+  const profileFormSchema = useMemo(() => createProfileFormSchema(t), [t])
+  const defaultValues = useMemo<Partial<ProfileFormValues>>(
+    () => ({
+      bio: t('settingsPage.profile.defaultBio'),
+      urls: [
+        { value: 'https://shadcn.com' },
+        { value: 'http://twitter.com/shadcn' },
+      ],
+    }),
+    [t]
+  )
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues,
@@ -79,13 +92,15 @@ export function ProfileForm() {
           name='username'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Username</FormLabel>
+              <FormLabel>{t('settingsPage.profile.usernameLabel')}</FormLabel>
               <FormControl>
-                <Input placeholder='shadcn' {...field} />
+                <Input
+                  placeholder={t('settingsPage.profile.usernamePlaceholder')}
+                  {...field}
+                />
               </FormControl>
               <FormDescription>
-                This is your public display name. It can be your real name or a
-                pseudonym. You can only change this once every 30 days.
+                {t('settingsPage.profile.usernameDescription')}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -96,11 +111,13 @@ export function ProfileForm() {
           name='email'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t('resumes.form.email')}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder='Select a verified email to display' />
+                    <SelectValue
+                      placeholder={t('settingsPage.profile.emailPlaceholder')}
+                    />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -110,8 +127,12 @@ export function ProfileForm() {
                 </SelectContent>
               </Select>
               <FormDescription>
-                You can manage verified email addresses in your{' '}
-                <Link to='/'>email settings</Link>.
+                <Trans
+                  i18nKey='settingsPage.profile.emailDescription'
+                  components={{
+                    link: <Link to='/' />,
+                  }}
+                />
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -122,17 +143,16 @@ export function ProfileForm() {
           name='bio'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Bio</FormLabel>
+              <FormLabel>{t('settingsPage.profile.bioLabel')}</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder='Tell us a little bit about yourself'
+                  placeholder={t('settingsPage.profile.bioPlaceholder')}
                   className='resize-none'
                   {...field}
                 />
               </FormControl>
               <FormDescription>
-                You can <span>@mention</span> other users and organizations to
-                link to them.
+                {t('settingsPage.profile.bioDescription')}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -147,10 +167,10 @@ export function ProfileForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={cn(index !== 0 && 'sr-only')}>
-                    URLs
+                    {t('settingsPage.profile.urlLabel')}
                   </FormLabel>
                   <FormDescription className={cn(index !== 0 && 'sr-only')}>
-                    Add links to your website, blog, or social media profiles.
+                    {t('settingsPage.profile.urlDescription')}
                   </FormDescription>
                   <FormControl className={cn(index !== 0 && 'mt-1.5')}>
                     <Input {...field} />
@@ -167,10 +187,10 @@ export function ProfileForm() {
             className='mt-2'
             onClick={() => append({ value: '' })}
           >
-            Add URL
+            {t('settingsPage.profile.urlSubmit')}
           </Button>
         </div>
-        <Button type='submit'>Update profile</Button>
+        <Button type='submit'>{t('settingsPage.profile.submit')}</Button>
       </form>
     </Form>
   )
