@@ -11,6 +11,7 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { type TFunction } from 'i18next'
 import {
   AlertTriangle,
   ExternalLink,
@@ -20,7 +21,10 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { i18n } from '@/lib/i18n'
+import { useLanguage } from '@/context/language-provider'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -73,26 +77,34 @@ import {
 } from '../data/resume-api'
 import { type ResumeFile, useResumeStore } from '../data/resume-store'
 
-const editResumeFormSchema = z.object({
-  email: z
-    .string()
-    .trim()
-    .email({ message: 'Please enter a valid email address.' }),
-  file: z
-    .instanceof(FileList)
-    .optional()
-    .refine((files) => !files || files.length === 0 || isPdf(files[0]), {
-      message: 'Please upload a PDF file.',
-    }),
-  name: z.string().trim().min(1, {
-    message: 'Please enter the applicant name.',
-  }),
-  positionApplied: z.string().trim().min(1, {
-    message: 'Please enter the position applied for.',
-  }),
-})
+function createEditResumeFormSchema(t: TFunction) {
+  return z.object({
+    email: z
+      .string()
+      .trim()
+      .email({ message: t('resumes.form.validation.email') }),
+    file: z
+      .instanceof(FileList)
+      .optional()
+      .refine((files) => !files || files.length === 0 || isPdf(files[0]), {
+        message: t('resumes.form.validation.pdfFile'),
+      }),
+    name: z
+      .string()
+      .trim()
+      .min(1, {
+        message: t('resumes.form.validation.applicantName'),
+      }),
+    positionApplied: z
+      .string()
+      .trim()
+      .min(1, {
+        message: t('resumes.form.validation.positionApplied'),
+      }),
+  })
+}
 
-type EditResumeForm = z.infer<typeof editResumeFormSchema>
+type EditResumeForm = z.infer<ReturnType<typeof createEditResumeFormSchema>>
 
 type EditResumePayload = {
   applicant: ResumeFile['applicant']
@@ -107,8 +119,8 @@ function formatFileSize(size: number) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`
 }
 
-function formatUploadedAt(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
+function formatUploadedAt(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value))
@@ -139,6 +151,8 @@ function ResumeEditDialog({
   open,
   resume,
 }: ResumeEditDialogProps) {
+  const { t } = useTranslation()
+  const editResumeFormSchema = useMemo(() => createEditResumeFormSchema(t), [t])
   const form = useForm<EditResumeForm>({
     resolver: zodResolver(editResumeFormSchema),
     defaultValues: {
@@ -173,10 +187,9 @@ function ResumeEditDialog({
     >
       <DialogContent className='sm:max-w-lg'>
         <DialogHeader className='text-start'>
-          <DialogTitle>Edit Resume</DialogTitle>
+          <DialogTitle>{t('resumes.preview.edit.title')}</DialogTitle>
           <DialogDescription>
-            Update applicant details or choose a replacement PDF for this
-            resume.
+            {t('resumes.preview.edit.description')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -191,11 +204,11 @@ function ResumeEditDialog({
                 name='name'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>{t('resumes.form.applicantName')}</FormLabel>
                     <FormControl>
                       <Input
                         autoComplete='name'
-                        placeholder='Applicant name'
+                        placeholder={t('resumes.form.applicantNamePlaceholder')}
                         {...field}
                       />
                     </FormControl>
@@ -208,11 +221,11 @@ function ResumeEditDialog({
                 name='email'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t('resumes.form.email')}</FormLabel>
                     <FormControl>
                       <Input
                         autoComplete='email'
-                        placeholder='applicant@example.com'
+                        placeholder={t('resumes.form.emailPlaceholder')}
                         type='email'
                         {...field}
                       />
@@ -227,9 +240,12 @@ function ResumeEditDialog({
               name='positionApplied'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Position applied for</FormLabel>
+                  <FormLabel>{t('resumes.form.positionApplied')}</FormLabel>
                   <FormControl>
-                    <Input placeholder='Frontend Engineer' {...field} />
+                    <Input
+                      placeholder={t('resumes.form.positionPlaceholder')}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -240,7 +256,7 @@ function ResumeEditDialog({
               name='file'
               render={() => (
                 <FormItem>
-                  <FormLabel>Replacement PDF</FormLabel>
+                  <FormLabel>{t('resumes.form.replacementPdf')}</FormLabel>
                   <FormControl>
                     <Input
                       type='file'
@@ -250,7 +266,9 @@ function ResumeEditDialog({
                     />
                   </FormControl>
                   <FormDescription>
-                    Leave this empty to keep {resume.fileName}.
+                    {t('resumes.preview.edit.keepFile', {
+                      fileName: resume.fileName,
+                    })}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -260,7 +278,9 @@ function ResumeEditDialog({
         </Form>
         <DialogFooter>
           <Button disabled={isSubmitting} type='submit' form='resume-edit-form'>
-            {isSubmitting ? 'Saving...' : 'Save changes'}
+            {isSubmitting
+              ? t('resumes.preview.edit.saving')
+              : t('resumes.preview.edit.submit')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -283,6 +303,7 @@ function ResumeDeleteDialog({
   open,
   resume,
 }: ResumeDeleteDialogProps) {
+  const { t } = useTranslation()
   const [value, setValue] = useState('')
   const expectedEmail = resume.applicant.email
 
@@ -299,7 +320,7 @@ function ResumeDeleteDialog({
             className='me-1 inline-block stroke-destructive'
             size={18}
           />{' '}
-          Delete Resume
+          {t('resumes.delete.title')}
         </span>
       }
       desc={
@@ -312,38 +333,44 @@ function ResumeDeleteDialog({
           }}
         >
           <p>
-            This will permanently delete {resume.fileName} for{' '}
-            <span className='font-bold'>{resume.applicant.name}</span>,
-            including the stored PDF and existing share links. This cannot be
-            undone.
+            {t('resumes.delete.description', {
+              applicantName: resume.applicant.name,
+              fileName: resume.fileName,
+            })}
           </p>
 
           <Label className='my-2' htmlFor='resume-delete-email'>
-            Applicant email:
+            {t('resumes.delete.confirmEmail')}
             <Input
               id='resume-delete-email'
               value={value}
               onChange={(event) => setValue(event.target.value)}
-              placeholder='Enter applicant email to confirm deletion.'
+              placeholder={t('resumes.delete.confirmPlaceholder')}
               autoFocus
             />
           </Label>
 
           <Alert variant='destructive'>
-            <AlertTitle>Warning!</AlertTitle>
+            <AlertTitle>{t('resumes.delete.warningTitle')}</AlertTitle>
             <AlertDescription>
-              Please be careful, this operation can not be rolled back.
+              {t('resumes.delete.warningDescription')}
             </AlertDescription>
           </Alert>
         </form>
       }
-      confirmText={isDeleting ? 'Deleting...' : 'Delete'}
+      confirmText={
+        isDeleting
+          ? t('resumes.delete.deleting')
+          : t('resumes.preview.actions.delete')
+      }
       destructive
     />
   )
 }
 
 export function ResumePreviewPage() {
+  const { t } = useTranslation()
+  const { locale } = useLanguage()
   const resumes = useResumeStore((state) => state.resumes)
   const removeResume = useResumeStore((state) => state.removeResume)
   const setResumes = useResumeStore((state) => state.setResumes)
@@ -372,7 +399,7 @@ export function ResumePreviewPage() {
         toast.error(
           error instanceof Error
             ? error.message
-            : 'Unable to load stored resumes.'
+            : i18n.t('resumes.preview.errors.load')
         )
       } finally {
         if (isActive) {
@@ -388,23 +415,26 @@ export function ResumePreviewPage() {
     }
   }, [setResumes])
 
-  const copyShareLink = useCallback(async (resume: ResumeFile) => {
-    setSharingResumeId(resume.id)
+  const copyShareLink = useCallback(
+    async (resume: ResumeFile) => {
+      setSharingResumeId(resume.id)
 
-    try {
-      const share = await createResumeShareLink(resume.id)
-      await navigator.clipboard.writeText(share.shareUrl)
-      toast.success('Share link copied to clipboard.')
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Unable to create a share link.'
-      )
-    } finally {
-      setSharingResumeId(null)
-    }
-  }, [])
+      try {
+        const share = await createResumeShareLink(resume.id)
+        await navigator.clipboard.writeText(share.shareUrl)
+        toast.success(t('resumes.preview.successes.shareCopied'))
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t('resumes.preview.errors.createShareLink')
+        )
+      } finally {
+        setSharingResumeId(null)
+      }
+    },
+    [t]
+  )
 
   const saveResumeChanges = useCallback(
     async ({ applicant, file, resumeId }: EditResumePayload) => {
@@ -417,15 +447,17 @@ export function ResumePreviewPage() {
 
         updateStoredResume(updatedResume)
         setEditingResume(null)
-        toast.success('Resume updated.')
+        toast.success(t('resumes.preview.successes.updated'))
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : 'Unable to update resume.'
+          error instanceof Error
+            ? error.message
+            : t('resumes.preview.errors.update')
         )
         throw error
       }
     },
-    [updateStoredResume]
+    [t, updateStoredResume]
   )
 
   const deleteSelectedResume = useCallback(async () => {
@@ -437,21 +469,23 @@ export function ResumePreviewPage() {
       await deleteResumeRequest(deletingResume.id)
       removeResume(deletingResume.id)
       setDeletingResume(null)
-      toast.success('Resume deleted.')
+      toast.success(t('resumes.preview.successes.deleted'))
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Unable to delete resume.'
+        error instanceof Error
+          ? error.message
+          : t('resumes.preview.errors.delete')
       )
     } finally {
       setDeletingResumeId(null)
     }
-  }, [deletingResume, removeResume])
+  }, [deletingResume, removeResume, t])
 
   const columns = useMemo<ColumnDef<ResumeFile>[]>(
     () => [
       {
         accessorKey: 'applicant.name',
-        header: 'Applicant',
+        header: t('resumes.preview.table.applicant'),
         cell: ({ row }) => (
           <div className='min-w-40'>
             <p className='font-medium'>{row.original.applicant.name}</p>
@@ -463,12 +497,12 @@ export function ResumePreviewPage() {
       },
       {
         accessorKey: 'applicant.positionApplied',
-        header: 'Position applied',
+        header: t('resumes.preview.table.position'),
         cell: ({ row }) => row.original.applicant.positionApplied,
       },
       {
         accessorKey: 'fileName',
-        header: 'Resume file',
+        header: t('resumes.preview.table.file'),
         cell: ({ row }) => (
           <div className='min-w-48'>
             <p className='font-medium'>{row.original.fileName}</p>
@@ -480,25 +514,29 @@ export function ResumePreviewPage() {
       },
       {
         accessorKey: 'uploadedAt',
-        header: 'Uploaded',
-        cell: ({ row }) => formatUploadedAt(row.original.uploadedAt),
+        header: t('resumes.preview.table.uploaded'),
+        cell: ({ row }) => formatUploadedAt(row.original.uploadedAt, locale),
       },
       {
         id: 'actions',
         cell: ({ row }) => (
           <div className='flex flex-wrap justify-end gap-2'>
             <Button
-              aria-label={`Edit resume for ${row.original.applicant.name}`}
+              aria-label={t('resumes.preview.actions.editForApplicant', {
+                applicantName: row.original.applicant.name,
+              })}
               size='sm'
               type='button'
               variant='outline'
               onClick={() => setEditingResume(row.original)}
             >
               <Pencil />
-              Edit
+              {t('resumes.preview.actions.edit')}
             </Button>
             <Button
-              aria-label={`Share resume for ${row.original.applicant.name}`}
+              aria-label={t('resumes.preview.actions.shareForApplicant', {
+                applicantName: row.original.applicant.name,
+              })}
               disabled={sharingResumeId === row.original.id}
               size='sm'
               type='button'
@@ -506,34 +544,38 @@ export function ResumePreviewPage() {
               onClick={() => void copyShareLink(row.original)}
             >
               <Share2 />
-              Share
+              {t('resumes.preview.actions.share')}
             </Button>
             <Button
-              aria-label={`Preview resume for ${row.original.applicant.name}`}
+              aria-label={t('resumes.preview.actions.previewForApplicant', {
+                applicantName: row.original.applicant.name,
+              })}
               size='sm'
               type='button'
               variant='outline'
               onClick={() => openResumePreview(row.original)}
             >
               <ExternalLink />
-              Preview
+              {t('resumes.preview.actions.preview')}
             </Button>
             <Button
-              aria-label={`Delete resume for ${row.original.applicant.name}`}
+              aria-label={t('resumes.preview.actions.deleteForApplicant', {
+                applicantName: row.original.applicant.name,
+              })}
               size='sm'
               type='button'
               variant='destructive'
               onClick={() => setDeletingResume(row.original)}
             >
               <Trash2 />
-              Delete
+              {t('resumes.preview.actions.delete')}
             </Button>
           </div>
         ),
         enableHiding: false,
       },
     ],
-    [copyShareLink, sharingResumeId]
+    [copyShareLink, locale, sharingResumeId, t]
   )
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -561,17 +603,16 @@ export function ResumePreviewPage() {
         <div className='flex flex-wrap items-end justify-between gap-2'>
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>
-              Resume Preview
+              {t('resumes.preview.title')}
             </h2>
             <p className='text-muted-foreground'>
-              Review applicants with uploaded PDF resumes and open each resume
-              in a new tab or copy a limited-time share link.
+              {t('resumes.preview.subtitle')}
             </p>
           </div>
           <Button asChild variant='outline'>
             <Link to='/resumes/upload'>
               <Upload />
-              Upload another resume
+              {t('resumes.preview.uploadAnother')}
             </Link>
           </Button>
         </div>
@@ -579,9 +620,9 @@ export function ResumePreviewPage() {
         {isLoadingResumes && resumes.length === 0 ? (
           <Card className='max-w-2xl'>
             <CardHeader>
-              <CardTitle>Loading resumes</CardTitle>
+              <CardTitle>{t('resumes.preview.loading.title')}</CardTitle>
               <CardDescription>
-                Checking stored resume metadata.
+                {t('resumes.preview.loading.description')}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -631,17 +672,18 @@ export function ResumePreviewPage() {
                   <FileText className='size-5' />
                 </div>
                 <div>
-                  <CardTitle>No resume ready to preview</CardTitle>
+                  <CardTitle>{t('resumes.preview.empty.title')}</CardTitle>
                   <CardDescription>
-                    Upload a PDF resume first, then return here to preview it
-                    online.
+                    {t('resumes.preview.empty.description')}
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link to='/resumes/upload'>Upload a resume</Link>
+                <Link to='/resumes/upload'>
+                  {t('resumes.preview.empty.action')}
+                </Link>
               </Button>
             </CardContent>
           </Card>

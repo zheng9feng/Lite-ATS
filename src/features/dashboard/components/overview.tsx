@@ -1,57 +1,72 @@
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 
-const data = [
+const overviewValues = [
   {
-    name: 'Jan',
     total: Math.floor(Math.random() * 5000) + 1000,
   },
   {
-    name: 'Feb',
     total: Math.floor(Math.random() * 5000) + 1000,
   },
   {
-    name: 'Mar',
     total: Math.floor(Math.random() * 5000) + 1000,
   },
   {
-    name: 'Apr',
     total: Math.floor(Math.random() * 5000) + 1000,
   },
   {
-    name: 'May',
     total: Math.floor(Math.random() * 5000) + 1000,
   },
   {
-    name: 'Jun',
     total: Math.floor(Math.random() * 5000) + 1000,
   },
   {
-    name: 'Jul',
     total: Math.floor(Math.random() * 5000) + 1000,
   },
   {
-    name: 'Aug',
     total: Math.floor(Math.random() * 5000) + 1000,
   },
   {
-    name: 'Sep',
     total: Math.floor(Math.random() * 5000) + 1000,
   },
   {
-    name: 'Oct',
     total: Math.floor(Math.random() * 5000) + 1000,
   },
   {
-    name: 'Nov',
     total: Math.floor(Math.random() * 5000) + 1000,
   },
   {
-    name: 'Dec',
     total: Math.floor(Math.random() * 5000) + 1000,
   },
 ]
 
+const monthKeys = [
+  'dashboard.months.jan',
+  'dashboard.months.feb',
+  'dashboard.months.mar',
+  'dashboard.months.apr',
+  'dashboard.months.may',
+  'dashboard.months.jun',
+  'dashboard.months.jul',
+  'dashboard.months.aug',
+  'dashboard.months.sep',
+  'dashboard.months.oct',
+  'dashboard.months.nov',
+  'dashboard.months.dec',
+]
+
 export function Overview() {
+  const { t } = useTranslation()
+  const data = useMemo(
+    () =>
+      overviewValues.map((value, index) => ({
+        ...value,
+        name: t(monthKeys[index]),
+      })),
+    [t]
+  )
+
   return (
     <ResponsiveContainer width='100%' height={350}>
       <BarChart data={data}>

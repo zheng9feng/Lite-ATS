@@ -37,7 +37,7 @@ describe('UsersDeleteDialog', () => {
       new RegExp(`Are you sure you want to delete ${MOCK_USER.username}?`, 'i')
     )
     const usernameInput = getByRole('textbox', { name: /Username/i })
-    const cancelButton = getByRole('button', { name: /Cancel/i })
+    const cancelButton = getByRole('button', { name: /取消/i })
     const deleteButton = getByRole('button', { name: /Delete/i })
 
     await expect.element(title).toBeInTheDocument()
@@ -75,7 +75,7 @@ describe('UsersDeleteDialog', () => {
       />
     )
 
-    const cancelButton = getByRole('button', { name: /Cancel/i })
+    const cancelButton = getByRole('button', { name: /取消/i })
     await userEvent.click(cancelButton)
 
     expect(onOpenChange).toHaveBeenCalledOnce()
@@ -107,7 +107,7 @@ describe('UsersDeleteDialog', () => {
     await userEvent.fill(usernameInput, MOCK_USER.username)
     await expect.element(usernameInput).toHaveValue(MOCK_USER.username)
 
-    const closeButton = getByRole('button', { name: /Cancel/i })
+    const closeButton = getByRole('button', { name: /取消/i })
     await userEvent.click(closeButton)
 
     const reopenButton = getByRole('button', { name: /Reopen/i })

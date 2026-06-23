@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
 import { DirectionProvider } from '@/context/direction-provider'
+import { LanguageProvider } from '@/context/language-provider'
 import { LayoutProvider } from '@/context/layout-provider'
 import { ThemeProvider } from '@/context/theme-provider'
 import { SidebarProvider } from '@/components/ui/sidebar'
@@ -59,13 +60,15 @@ vi.mock('@/components/theme-switch', () => ({
 function renderResumePreviewPage() {
   return render(
     <DirectionProvider>
-      <ThemeProvider>
-        <LayoutProvider>
-          <SidebarProvider>
-            <ResumePreviewPage />
-          </SidebarProvider>
-        </LayoutProvider>
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider>
+          <LayoutProvider>
+            <SidebarProvider>
+              <ResumePreviewPage />
+            </SidebarProvider>
+          </LayoutProvider>
+        </ThemeProvider>
+      </LanguageProvider>
     </DirectionProvider>
   )
 }
@@ -133,11 +136,9 @@ describe('ResumePreviewPage', () => {
   it('shows an empty state when no resumes have been uploaded', async () => {
     const { getByRole, getByText } = await renderResumePreviewPage()
 
+    await expect.element(getByText('暂无可预览的简历')).toBeInTheDocument()
     await expect
-      .element(getByText('No resume ready to preview'))
-      .toBeInTheDocument()
-    await expect
-      .element(getByRole('link', { name: /Upload a resume/i }))
+      .element(getByRole('link', { name: '上传简历', exact: true }))
       .toHaveAttribute('href', '/resumes/upload')
   })
 
@@ -159,8 +160,8 @@ describe('ResumePreviewPage', () => {
 
     const { getByText } = await renderResumePreviewPage()
 
-    await expect.element(getByText(/^Applicant$/)).toBeInTheDocument()
-    await expect.element(getByText(/^Resume file$/)).toBeInTheDocument()
+    await expect.element(getByText(/^申请人$/)).toBeInTheDocument()
+    await expect.element(getByText(/^简历文件$/)).toBeInTheDocument()
     await expect.element(getByText(/^Candidate 1$/)).toBeInTheDocument()
     await expect
       .element(getByText('candidate1@example.com'))
@@ -209,7 +210,7 @@ describe('ResumePreviewPage', () => {
     const { getByRole } = await renderResumePreviewPage()
 
     await userEvent.click(
-      getByRole('button', { name: /Preview resume for Candidate 1/i })
+      getByRole('button', { name: /预览 Candidate 1 的简历/i })
     )
 
     expect(open).toHaveBeenCalledWith(
@@ -227,7 +228,7 @@ describe('ResumePreviewPage', () => {
     const { getByRole } = await renderResumePreviewPage()
 
     await userEvent.click(
-      getByRole('button', { name: /Share resume for Candidate 1/i })
+      getByRole('button', { name: /分享 Candidate 1 的简历/i })
     )
 
     expect(createResumeShareLink).toHaveBeenCalledWith('resume-1')
@@ -248,16 +249,13 @@ describe('ResumePreviewPage', () => {
       await renderResumePreviewPage()
 
     await userEvent.click(
-      getByRole('button', { name: /Edit resume for Candidate 1/i })
+      getByRole('button', { name: /编辑 Candidate 1 的简历/i })
     )
-    await userEvent.fill(getByLabelText('Name'), 'Updated Candidate')
-    await userEvent.fill(getByLabelText('Email'), 'updated@example.com')
-    await userEvent.fill(
-      getByLabelText('Position applied for'),
-      'Product Engineer'
-    )
-    await userEvent.upload(getByLabelText('Replacement PDF'), file)
-    await userEvent.click(getByRole('button', { name: /Save changes/i }))
+    await userEvent.fill(getByLabelText('姓名'), 'Updated Candidate')
+    await userEvent.fill(getByLabelText('邮箱'), 'updated@example.com')
+    await userEvent.fill(getByLabelText('申请职位'), 'Product Engineer')
+    await userEvent.upload(getByLabelText('替换 PDF'), file)
+    await userEvent.click(getByRole('button', { name: /保存更改/i }))
 
     await vi.waitFor(() =>
       expect(updateResume).toHaveBeenCalledWith({
@@ -284,24 +282,22 @@ describe('ResumePreviewPage', () => {
       await renderResumePreviewPage()
 
     await userEvent.click(
-      getByRole('button', { name: /Delete resume for Candidate 1/i })
+      getByRole('button', { name: /删除 Candidate 1 的简历/i })
     )
     await expect
-      .element(getByText(/This will permanently delete candidate-1.pdf/i))
+      .element(getByText(/这将永久删除 candidate-1.pdf/i))
       .toBeInTheDocument()
 
     await userEvent.fill(
-      getByLabelText('Applicant email:'),
+      getByLabelText('申请人邮箱：'),
       'candidate1@example.com'
     )
-    await userEvent.click(getByRole('button', { name: /^Delete$/i }))
+    await userEvent.click(getByRole('button', { name: /^删除$/i }))
 
     await vi.waitFor(() =>
       expect(deleteResume).toHaveBeenCalledWith('resume-1')
     )
-    await expect
-      .element(getByText('No resume ready to preview'))
-      .toBeInTheDocument()
+    await expect.element(getByText('暂无可预览的简历')).toBeInTheDocument()
     expect(useResumeStore.getState().resumes).toEqual([])
   })
 })
