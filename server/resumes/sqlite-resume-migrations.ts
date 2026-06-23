@@ -53,7 +53,12 @@ export async function migrateResumeDatabase({
         ? ` "${failedMigration.migrationName}"`
         : ''
 
-      throw new Error(`Failed to run resume database migration${migrationName}.`)
+      const detail =
+        error instanceof Error && error.message ? ` ${error.message}` : ''
+
+      throw new Error(
+        `Failed to run resume database migration${migrationName}.${detail}`
+      )
     }
   } finally {
     await database.destroy()
