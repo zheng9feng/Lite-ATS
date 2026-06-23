@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { z } from 'zod'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { type TFunction } from 'i18next'
@@ -33,6 +33,7 @@ import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { uploadResume } from '../data/resume-api'
 import { useResumeStore } from '../data/resume-store'
+import { ResumeFileInput } from './resume-file-input'
 
 function createResumeUploadFormSchema(t: TFunction) {
   return z.object({
@@ -89,6 +90,8 @@ export function ResumeUploadPage() {
     },
   })
   const fileRef = form.register('file')
+  const selectedFiles = useWatch({ control: form.control, name: 'file' })
+  const selectedFileName = selectedFiles?.[0]?.name
 
   const onSubmit = async (values: ResumeUploadForm) => {
     setSubmitError(null)
@@ -221,14 +224,13 @@ export function ResumeUploadPage() {
                   render={() => (
                     <FormItem>
                       <FormLabel>{t('resumes.form.resumePdf')}</FormLabel>
-                      <FormControl>
-                        <Input
-                          type='file'
-                          accept='application/pdf,.pdf'
-                          {...fileRef}
-                          className='cursor-pointer'
-                        />
-                      </FormControl>
+                      <ResumeFileInput
+                        accept='application/pdf,.pdf'
+                        chooseLabel={t('resumes.form.chooseFile')}
+                        noFileLabel={t('resumes.form.noFileChosen')}
+                        selectedFileName={selectedFileName}
+                        {...fileRef}
+                      />
                       <FormDescription>
                         {t('resumes.upload.fileDescription')}
                       </FormDescription>

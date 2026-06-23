@@ -338,8 +338,10 @@ export const resources = {
         form: {
           applicantName: '姓名',
           applicantNamePlaceholder: '申请人姓名',
+          chooseFile: '选择文件',
           email: '邮箱',
           emailPlaceholder: 'applicant@example.com',
+          noFileChosen: '未选择文件',
           positionApplied: '申请职位',
           positionPlaceholder: '前端工程师',
           replacementPdf: '替换 PDF',
@@ -768,8 +770,10 @@ export const resources = {
         form: {
           applicantName: 'Name',
           applicantNamePlaceholder: 'Applicant name',
+          chooseFile: 'Choose file',
           email: 'Email',
           emailPlaceholder: 'applicant@example.com',
+          noFileChosen: 'No file chosen',
           positionApplied: 'Position applied for',
           positionPlaceholder: 'Frontend Engineer',
           replacementPdf: 'Replacement PDF',

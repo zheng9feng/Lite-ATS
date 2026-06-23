@@ -91,6 +91,10 @@ describe('ResumeUploadPage', () => {
     const { getByLabelText, getByRole, getByText } =
       await renderResumeUploadPage()
 
+    await expect
+      .element(getByRole('button', { name: /^选择文件$/i }))
+      .toBeInTheDocument()
+    await expect.element(getByText('未选择文件')).toBeInTheDocument()
     await userEvent.type(getByLabelText('姓名'), 'Ava Chen')
     await userEvent.type(getByLabelText('邮箱'), 'ava@example.com')
     await userEvent.type(getByLabelText('申请职位'), 'Frontend Engineer')
@@ -98,6 +102,7 @@ describe('ResumeUploadPage', () => {
       getByLabelText('简历 PDF'),
       new File(['not pdf'], 'resume.txt', { type: 'text/plain' })
     )
+    await expect.element(getByText('resume.txt')).toBeInTheDocument()
     await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
 
     await expect.element(getByText('请上传 PDF 文件。')).toBeInTheDocument()

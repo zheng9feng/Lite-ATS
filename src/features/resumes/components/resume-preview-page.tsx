@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from '@tanstack/react-router'
 import {
@@ -76,6 +76,7 @@ import {
   updateResume as updateResumeRequest,
 } from '../data/resume-api'
 import { type ResumeFile, useResumeStore } from '../data/resume-store'
+import { ResumeFileInput } from './resume-file-input'
 
 function createEditResumeFormSchema(t: TFunction) {
   return z.object({
@@ -163,6 +164,8 @@ function ResumeEditDialog({
     },
   })
   const fileRef = form.register('file')
+  const selectedFiles = useWatch({ control: form.control, name: 'file' })
+  const selectedFileName = selectedFiles?.[0]?.name
   const isSubmitting = form.formState.isSubmitting
 
   const handleSubmit = async (values: EditResumeForm) => {
@@ -257,14 +260,13 @@ function ResumeEditDialog({
               render={() => (
                 <FormItem>
                   <FormLabel>{t('resumes.form.replacementPdf')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      type='file'
-                      accept='application/pdf,.pdf'
-                      {...fileRef}
-                      className='cursor-pointer'
-                    />
-                  </FormControl>
+                  <ResumeFileInput
+                    accept='application/pdf,.pdf'
+                    chooseLabel={t('resumes.form.chooseFile')}
+                    noFileLabel={t('resumes.form.noFileChosen')}
+                    selectedFileName={selectedFileName}
+                    {...fileRef}
+                  />
                   <FormDescription>
                     {t('resumes.preview.edit.keepFile', {
                       fileName: resume.fileName,

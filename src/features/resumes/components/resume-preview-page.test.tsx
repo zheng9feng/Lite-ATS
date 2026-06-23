@@ -254,7 +254,12 @@ describe('ResumePreviewPage', () => {
     await userEvent.fill(getByLabelText('姓名'), 'Updated Candidate')
     await userEvent.fill(getByLabelText('邮箱'), 'updated@example.com')
     await userEvent.fill(getByLabelText('申请职位'), 'Product Engineer')
+    await expect
+      .element(getByRole('button', { name: /^选择文件$/i }))
+      .toBeInTheDocument()
+    await expect.element(getByText('未选择文件')).toBeInTheDocument()
     await userEvent.upload(getByLabelText('替换 PDF'), file)
+    await expect.element(getByText('updated.pdf')).toBeInTheDocument()
     await userEvent.click(getByRole('button', { name: /保存更改/i }))
 
     await vi.waitFor(() =>
