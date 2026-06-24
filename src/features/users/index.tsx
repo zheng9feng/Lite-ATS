@@ -10,12 +10,12 @@ import { UsersDialogs } from './components/users-dialogs'
 import { UsersPrimaryButtons } from './components/users-primary-buttons'
 import { UsersProvider } from './components/users-provider'
 import { UsersTable } from './components/users-table'
-import { users } from './data/users'
 
 const route = getRouteApi('/_authenticated/users/')
 
 export function Users() {
   const { t } = useTranslation()
+  const users = route.useLoaderData()
   const search = route.useSearch()
   const navigate = route.useNavigate()
 

@@ -176,7 +176,11 @@ export const resources = {
           admin: '管理员',
           cashier: '收银员',
           manager: '经理',
+          normal: '普通用户',
           superadmin: '超级管理员',
+        },
+        api: {
+          failed: '用户请求失败。',
         },
         status: {
           active: '已启用',
@@ -633,7 +637,11 @@ export const resources = {
           admin: 'Admin',
           cashier: 'Cashier',
           manager: 'Manager',
+          normal: 'Normal',
           superadmin: 'Superadmin',
+        },
+        api: {
+          failed: 'User request failed.',
         },
         status: {
           active: 'Active',
