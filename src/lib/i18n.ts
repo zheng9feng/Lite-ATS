@@ -30,6 +30,16 @@ export const resources = {
         description: '搜索要运行的命令。',
         title: '命令面板',
       },
+      dataTable: {
+        clearFilters: '清除筛选',
+        filterPlaceholder: '筛选...',
+        hideColumn: '隐藏',
+        selectedCount: '已选择 {{count}} 项',
+        sortAsc: '升序',
+        sortDesc: '降序',
+        toggleColumns: '切换列',
+        view: '视图',
+      },
       errors: {
         generic: '出错了！',
         internalServer: '服务器内部错误！',
@@ -142,6 +152,43 @@ export const resources = {
       },
       search: {
         inputPlaceholder: '输入命令或搜索...',
+      },
+      usersPage: {
+        actions: {
+          add: '添加用户',
+          invite: '邀请用户',
+        },
+        columns: {
+          email: '邮箱',
+          name: '姓名',
+          phoneNumber: '电话号码',
+          role: '角色',
+          status: '状态',
+          username: '用户名',
+        },
+        description: '在这里管理用户及其角色。',
+        filters: {
+          role: '角色',
+          searchPlaceholder: '筛选用户...',
+          status: '状态',
+        },
+        roles: {
+          admin: '管理员',
+          cashier: '收银员',
+          manager: '经理',
+          superadmin: '超级管理员',
+        },
+        status: {
+          active: '已启用',
+          inactive: '未启用',
+          invited: '已邀请',
+          suspended: '已暂停',
+        },
+        table: {
+          selectAll: '选择全部',
+          selectRow: '选择行',
+        },
+        title: '用户列表',
       },
       sidebar: {
         description: '显示移动端侧边栏。',
@@ -440,6 +487,16 @@ export const resources = {
         description: 'Search for a command to run...',
         title: 'Command Palette',
       },
+      dataTable: {
+        clearFilters: 'Clear filters',
+        filterPlaceholder: 'Filter...',
+        hideColumn: 'Hide',
+        selectedCount: '{{count}} selected',
+        sortAsc: 'Asc',
+        sortDesc: 'Desc',
+        toggleColumns: 'Toggle columns',
+        view: 'View',
+      },
       errors: {
         generic: 'Something went wrong!',
         internalServer: 'Internal Server Error!',
@@ -552,6 +609,43 @@ export const resources = {
       },
       search: {
         inputPlaceholder: 'Type a command or search...',
+      },
+      usersPage: {
+        actions: {
+          add: 'Add User',
+          invite: 'Invite User',
+        },
+        columns: {
+          email: 'Email',
+          name: 'Name',
+          phoneNumber: 'Phone Number',
+          role: 'Role',
+          status: 'Status',
+          username: 'Username',
+        },
+        description: 'Manage your users and their roles here.',
+        filters: {
+          role: 'Role',
+          searchPlaceholder: 'Filter users...',
+          status: 'Status',
+        },
+        roles: {
+          admin: 'Admin',
+          cashier: 'Cashier',
+          manager: 'Manager',
+          superadmin: 'Superadmin',
+        },
+        status: {
+          active: 'Active',
+          inactive: 'Inactive',
+          invited: 'Invited',
+          suspended: 'Suspended',
+        },
+        table: {
+          selectAll: 'Select all',
+          selectRow: 'Select row',
+        },
+        title: 'User List',
       },
       sidebar: {
         description: 'Displays the mobile sidebar.',
