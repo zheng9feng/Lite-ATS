@@ -7,10 +7,12 @@ async function importAuthStore() {
 }
 
 const sampleUser = {
-  accountNo: 'ACC-1',
+  createdAt: '2026-06-23T00:00:00.000Z',
   email: 'user@example.com',
-  role: ['user'],
-  exp: 1_700_000_000,
+  id: 'user-1',
+  name: 'User One',
+  status: 'active' as const,
+  updatedAt: '2026-06-23T00:00:00.000Z',
 }
 
 describe('useAuthStore', () => {
@@ -19,58 +21,74 @@ describe('useAuthStore', () => {
     vi.resetModules()
   })
 
-  it('starts with an empty access token when nothing is persisted', async () => {
+  it('starts with an empty auth snapshot when nothing is persisted', async () => {
     const useAuthStore = await importAuthStore()
 
-    expect(useAuthStore.getState().auth.accessToken).toBe('')
+    expect(useAuthStore.getState().auth.sessionToken).toBe('')
     expect(useAuthStore.getState().auth.user).toBeNull()
+    expect(useAuthStore.getState().auth.roles).toEqual([])
+    expect(useAuthStore.getState().auth.permissions).toEqual([])
   })
 
-  it('persists access token so a new store instance reads it back', async () => {
+  it('persists session token so a new store instance reads it back', async () => {
     const useAuthStore = await importAuthStore()
-    useAuthStore.getState().auth.setAccessToken('session-token')
+    useAuthStore.getState().auth.setSessionToken('session-token')
 
     vi.resetModules()
     const useAuthStoreAfterReload = await importAuthStore()
 
-    expect(useAuthStoreAfterReload.getState().auth.accessToken).toBe(
+    expect(useAuthStoreAfterReload.getState().auth.sessionToken).toBe(
       'session-token'
     )
   })
 
-  it('clears persisted access token when resetAccessToken is used', async () => {
+  it('clears persisted session token when resetSessionToken is used', async () => {
     const useAuthStore = await importAuthStore()
-    useAuthStore.getState().auth.setAccessToken('to-clear')
-    useAuthStore.getState().auth.resetAccessToken()
+    useAuthStore.getState().auth.setSessionToken('to-clear')
+    useAuthStore.getState().auth.resetSessionToken()
 
     vi.resetModules()
     const useAuthStoreAfterReload = await importAuthStore()
 
-    expect(useAuthStoreAfterReload.getState().auth.accessToken).toBe('')
+    expect(useAuthStoreAfterReload.getState().auth.sessionToken).toBe('')
   })
 
-  it('updates the signed-in user via setUser', async () => {
+  it('updates the signed-in auth snapshot', async () => {
     const useAuthStore = await importAuthStore()
 
-    useAuthStore.getState().auth.setUser({ ...sampleUser })
+    useAuthStore.getState().auth.setAuthSnapshot({
+      permissions: ['resumes:read'],
+      roles: ['normal'],
+      sessionToken: 'session-token',
+      user: { ...sampleUser },
+    })
 
     expect(useAuthStore.getState().auth.user).toEqual(sampleUser)
+    expect(useAuthStore.getState().auth.roles).toEqual(['normal'])
+    expect(useAuthStore.getState().auth.permissions).toEqual(['resumes:read'])
+    expect(useAuthStore.getState().auth.sessionToken).toBe('session-token')
   })
 
-  it('reset clears user and access token and drops persistence', async () => {
+  it('reset clears user, roles, permissions, and session token', async () => {
     const useAuthStore = await importAuthStore()
-    useAuthStore.getState().auth.setAccessToken('will-be-cleared')
-    useAuthStore.getState().auth.setUser({ ...sampleUser })
+    useAuthStore.getState().auth.setAuthSnapshot({
+      permissions: ['rbac:manage'],
+      roles: ['admin'],
+      sessionToken: 'will-be-cleared',
+      user: { ...sampleUser },
+    })
 
     useAuthStore.getState().auth.reset()
 
     expect(useAuthStore.getState().auth.user).toBeNull()
-    expect(useAuthStore.getState().auth.accessToken).toBe('')
+    expect(useAuthStore.getState().auth.roles).toEqual([])
+    expect(useAuthStore.getState().auth.permissions).toEqual([])
+    expect(useAuthStore.getState().auth.sessionToken).toBe('')
 
     vi.resetModules()
     const useAuthStoreAfterReload = await importAuthStore()
 
     expect(useAuthStoreAfterReload.getState().auth.user).toBeNull()
-    expect(useAuthStoreAfterReload.getState().auth.accessToken).toBe('')
+    expect(useAuthStoreAfterReload.getState().auth.sessionToken).toBe('')
   })
 })

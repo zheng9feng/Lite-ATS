@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useAuthStore } from '@/stores/auth-store'
 import { useLayout } from '@/context/layout-provider'
 import {
   Sidebar,
@@ -9,7 +10,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 // import { AppTitle } from './app-title'
-import { sidebarData } from './data/sidebar-data'
+import { filterNavGroupsByPermissions, sidebarData } from './data/sidebar-data'
 import { NavGroup } from './nav-group'
 import { NavUser } from './nav-user'
 import { TeamSwitcher } from './team-switcher'
@@ -18,9 +19,14 @@ import { translateSidebarData } from './translate-sidebar-data'
 export function AppSidebar() {
   const { t } = useTranslation()
   const { collapsible, variant } = useLayout()
+  const permissions = useAuthStore((state) => state.auth.permissions)
   const navGroups = useMemo(
-    () => translateSidebarData(sidebarData.navGroups, t),
-    [t]
+    () =>
+      translateSidebarData(
+        filterNavGroupsByPermissions(sidebarData.navGroups, permissions),
+        t
+      ),
+    [permissions, t]
   )
 
   return (

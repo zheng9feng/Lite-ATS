@@ -200,6 +200,25 @@ export function createAuthService({
 
       repository.setUserRoles(userId, roleIds)
     },
+    setRolePermissions: (roleId: string, permissionNames: Permission[]) => {
+      const role = repository.findRoleById(roleId)
+
+      if (!role) {
+        throw new Error('Role not found')
+      }
+
+      const permissionIds = permissionNames.map((permissionName) => {
+        const permission = repository.findPermissionByName(permissionName)
+
+        if (!permission) {
+          throw new Error(`Permission not found: ${permissionName}`)
+        }
+
+        return permission.id
+      })
+
+      repository.setRolePermissions(role.id, permissionIds)
+    },
     updateUser: async (userId: string, payload: UpdateLocalUserPayload) => {
       const updatedUser = repository.updateUser(userId, {
         email: payload.email,

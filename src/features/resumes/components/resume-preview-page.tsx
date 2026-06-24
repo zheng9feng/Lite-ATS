@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { i18n } from '@/lib/i18n'
 import { useLanguage } from '@/context/language-provider'
+import { useCan } from '@/hooks/use-permission'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -377,6 +378,10 @@ export function ResumePreviewPage() {
   const removeResume = useResumeStore((state) => state.removeResume)
   const setResumes = useResumeStore((state) => state.setResumes)
   const updateStoredResume = useResumeStore((state) => state.updateResume)
+  const canCreateResumes = useCan(['resumes:create'])
+  const canDeleteResumes = useCan(['resumes:delete'])
+  const canShareResumes = useCan(['resumes:share'])
+  const canUpdateResumes = useCan(['resumes:update'])
   const [deletingResume, setDeletingResume] = useState<ResumeFile | null>(null)
   const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null)
   const [editingResume, setEditingResume] = useState<ResumeFile | null>(null)
@@ -523,31 +528,35 @@ export function ResumePreviewPage() {
         id: 'actions',
         cell: ({ row }) => (
           <div className='flex flex-wrap justify-end gap-2'>
-            <Button
-              aria-label={t('resumes.preview.actions.editForApplicant', {
-                applicantName: row.original.applicant.name,
-              })}
-              size='sm'
-              type='button'
-              variant='outline'
-              onClick={() => setEditingResume(row.original)}
-            >
-              <Pencil />
-              {t('resumes.preview.actions.edit')}
-            </Button>
-            <Button
-              aria-label={t('resumes.preview.actions.shareForApplicant', {
-                applicantName: row.original.applicant.name,
-              })}
-              disabled={sharingResumeId === row.original.id}
-              size='sm'
-              type='button'
-              variant='outline'
-              onClick={() => void copyShareLink(row.original)}
-            >
-              <Share2 />
-              {t('resumes.preview.actions.share')}
-            </Button>
+            {canUpdateResumes ? (
+              <Button
+                aria-label={t('resumes.preview.actions.editForApplicant', {
+                  applicantName: row.original.applicant.name,
+                })}
+                size='sm'
+                type='button'
+                variant='outline'
+                onClick={() => setEditingResume(row.original)}
+              >
+                <Pencil />
+                {t('resumes.preview.actions.edit')}
+              </Button>
+            ) : null}
+            {canShareResumes ? (
+              <Button
+                aria-label={t('resumes.preview.actions.shareForApplicant', {
+                  applicantName: row.original.applicant.name,
+                })}
+                disabled={sharingResumeId === row.original.id}
+                size='sm'
+                type='button'
+                variant='outline'
+                onClick={() => void copyShareLink(row.original)}
+              >
+                <Share2 />
+                {t('resumes.preview.actions.share')}
+              </Button>
+            ) : null}
             <Button
               aria-label={t('resumes.preview.actions.previewForApplicant', {
                 applicantName: row.original.applicant.name,
@@ -560,24 +569,34 @@ export function ResumePreviewPage() {
               <ExternalLink />
               {t('resumes.preview.actions.preview')}
             </Button>
-            <Button
-              aria-label={t('resumes.preview.actions.deleteForApplicant', {
-                applicantName: row.original.applicant.name,
-              })}
-              size='sm'
-              type='button'
-              variant='destructive'
-              onClick={() => setDeletingResume(row.original)}
-            >
-              <Trash2 />
-              {t('resumes.preview.actions.delete')}
-            </Button>
+            {canDeleteResumes ? (
+              <Button
+                aria-label={t('resumes.preview.actions.deleteForApplicant', {
+                  applicantName: row.original.applicant.name,
+                })}
+                size='sm'
+                type='button'
+                variant='destructive'
+                onClick={() => setDeletingResume(row.original)}
+              >
+                <Trash2 />
+                {t('resumes.preview.actions.delete')}
+              </Button>
+            ) : null}
           </div>
         ),
         enableHiding: false,
       },
     ],
-    [copyShareLink, locale, sharingResumeId, t]
+    [
+      canDeleteResumes,
+      canShareResumes,
+      canUpdateResumes,
+      copyShareLink,
+      locale,
+      sharingResumeId,
+      t,
+    ]
   )
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -611,12 +630,14 @@ export function ResumePreviewPage() {
               {t('resumes.preview.subtitle')}
             </p>
           </div>
-          <Button asChild variant='outline'>
-            <Link to='/resumes/upload'>
-              <Upload />
-              {t('resumes.preview.uploadAnother')}
-            </Link>
-          </Button>
+          {canCreateResumes ? (
+            <Button asChild variant='outline'>
+              <Link to='/resumes/upload'>
+                <Upload />
+                {t('resumes.preview.uploadAnother')}
+              </Link>
+            </Button>
+          ) : null}
         </div>
 
         {isLoadingResumes && resumes.length === 0 ? (

@@ -118,10 +118,20 @@ export function createSqliteAuthRepository({
     FROM t_roles
     WHERE name = ?
   `)
+  const findRoleById = database.prepare<string>(`
+    SELECT id, name, description
+    FROM t_roles
+    WHERE id = ?
+  `)
   const listPermissions = database.prepare(`
     SELECT id, name, description
     FROM t_permissions
     ORDER BY name
+  `)
+  const findPermissionByName = database.prepare<string>(`
+    SELECT id, name, description
+    FROM t_permissions
+    WHERE name = ?
   `)
   const listRolePermissions = database.prepare<string>(`
     SELECT p.name
@@ -202,6 +212,14 @@ export function createSqliteAuthRepository({
     WHERE ur.user_id = ?
     ORDER BY p.name
   `)
+  const deleteRolePermissions = database.prepare<string>(`
+    DELETE FROM t_role_permissions
+    WHERE role_id = ?
+  `)
+  const insertRolePermission = database.prepare(`
+    INSERT OR IGNORE INTO t_role_permissions (role_id, permission_id)
+    VALUES (@roleId, @permissionId)
+  `)
   const insertSession = database.prepare(`
     INSERT OR REPLACE INTO t_sessions (
       id,
@@ -242,6 +260,14 @@ export function createSqliteAuthRepository({
       }
     }
   )
+  const setRolePermissionsTransaction = database.transaction(
+    (roleId: string, permissionIds: string[]) => {
+      deleteRolePermissions.run(roleId)
+      for (const permissionId of permissionIds) {
+        insertRolePermission.run({ permissionId, roleId })
+      }
+    }
+  )
 
   return {
     close: () => database.close(),
@@ -279,6 +305,18 @@ export function createSqliteAuthRepository({
       const row = findRoleByName.get(roleName) as RoleRow | undefined
 
       return row ? toRole(row) : undefined
+    },
+    findRoleById: (roleId: string) => {
+      const row = findRoleById.get(roleId) as RoleRow | undefined
+
+      return row ? toRole(row) : undefined
+    },
+    findPermissionByName: (permission: Permission) => {
+      const row = findPermissionByName.get(permission) as
+        | PermissionRow
+        | undefined
+
+      return row ? toPermission(row) : undefined
     },
     findSessionByTokenHash: (tokenHash: string) => {
       const row = findSessionByTokenHash.get(tokenHash) as
@@ -329,6 +367,9 @@ export function createSqliteAuthRepository({
     },
     setUserRoles: (userId: string, roleIds: string[]) => {
       setUserRolesTransaction(userId, roleIds)
+    },
+    setRolePermissions: (roleId: string, permissionIds: string[]) => {
+      setRolePermissionsTransaction(roleId, permissionIds)
     },
     updateSessionLastUsedAt: (sessionId: string, lastUsedAt: Date) => {
       updateSessionLastUsedAt.run({

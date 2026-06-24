@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
+import { useAuthStore } from '@/stores/auth-store'
 import { DirectionProvider } from '@/context/direction-provider'
 import { LanguageProvider } from '@/context/language-provider'
 import { LayoutProvider } from '@/context/layout-provider'
@@ -117,6 +118,27 @@ describe('ResumePreviewPage', () => {
       fileName: payload.file?.name ?? 'candidate-1.pdf',
       fileSize: payload.file?.size ?? 1024,
     }))
+    useAuthStore.getState().auth.setAuthSnapshot({
+      permissions: [
+        'resumes:read',
+        'resumes:create',
+        'resumes:update',
+        'resumes:delete',
+        'resumes:share',
+        'users:manage',
+        'rbac:manage',
+      ],
+      roles: ['admin'],
+      sessionToken: 'session-token',
+      user: {
+        createdAt: '2026-06-23T00:00:00.000Z',
+        email: 'admin@example.com',
+        id: 'user-admin',
+        name: 'Admin User',
+        status: 'active',
+        updatedAt: '2026-06-23T00:00:00.000Z',
+      },
+    })
     useResumeStore.setState({ resumes: [] })
     listResumes.mockImplementation(
       async () => useResumeStore.getState().resumes

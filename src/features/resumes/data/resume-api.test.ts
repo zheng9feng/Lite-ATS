@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useAuthStore } from '@/stores/auth-store'
 import {
   createResumeShareLink,
   deleteResume,
@@ -13,6 +14,8 @@ describe('resume API client', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('fetch', fetch)
+    useAuthStore.getState().auth.reset()
+    useAuthStore.getState().auth.setSessionToken('session-token')
   })
 
   it('uploads a resume PDF to the API and returns stored metadata', async () => {
@@ -45,6 +48,9 @@ describe('resume API client', () => {
 
     expect(fetch).toHaveBeenCalledWith('/api/resumes', {
       body: expect.any(FormData),
+      headers: {
+        Authorization: 'Bearer session-token',
+      },
       method: 'POST',
     })
     expect(resume.previewUrl).toBe(
@@ -65,6 +71,9 @@ describe('resume API client', () => {
     const share = await createResumeShareLink('resume-1')
 
     expect(fetch).toHaveBeenCalledWith('/api/resumes/resume-1/share', {
+      headers: {
+        Authorization: 'Bearer session-token',
+      },
       method: 'POST',
     })
     expect(share.shareUrl).toBe(
@@ -94,7 +103,11 @@ describe('resume API client', () => {
 
     const resumes = await listResumes()
 
-    expect(fetch).toHaveBeenCalledWith('/api/resumes')
+    expect(fetch).toHaveBeenCalledWith('/api/resumes', {
+      headers: {
+        Authorization: 'Bearer session-token',
+      },
+    })
     expect(resumes).toHaveLength(1)
     expect(resumes[0]?.id).toBe('resume-1')
   })
@@ -132,6 +145,9 @@ describe('resume API client', () => {
 
     expect(fetch).toHaveBeenCalledWith('/api/resumes/resume-1', {
       body: expect.any(FormData),
+      headers: {
+        Authorization: 'Bearer session-token',
+      },
       method: 'PATCH',
     })
     expect(resume.applicant.email).toBe('ava.updated@example.com')
@@ -147,6 +163,9 @@ describe('resume API client', () => {
     await deleteResume('resume-1')
 
     expect(fetch).toHaveBeenCalledWith('/api/resumes/resume-1', {
+      headers: {
+        Authorization: 'Bearer session-token',
+      },
       method: 'DELETE',
     })
   })

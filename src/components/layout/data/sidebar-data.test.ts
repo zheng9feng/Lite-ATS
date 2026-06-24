@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { sidebarData } from './sidebar-data'
+import { type NavGroup } from '../types'
+import { filterNavGroupsByPermissions, sidebarData } from './sidebar-data'
 
-function collectNavEntries() {
-  return sidebarData.navGroups.flatMap((group) =>
+function collectNavEntries(navGroups: NavGroup[] = sidebarData.navGroups) {
+  return navGroups.flatMap((group) =>
     group.items.flatMap((item) => [
       { title: item.title, url: 'url' in item ? item.url : undefined },
       ...('items' in item && item.items
@@ -27,5 +28,15 @@ describe('sidebarData', () => {
     expect(entries.map((entry) => entry.url)).not.toContain(
       '/clerk/user-management'
     )
+  })
+
+  it('filters admin-only entries for normal resume readers', () => {
+    const entries = collectNavEntries(
+      filterNavGroupsByPermissions(sidebarData.navGroups, ['resumes:read'])
+    )
+
+    expect(entries.map((entry) => entry.title)).toContain('Resume Preview')
+    expect(entries.map((entry) => entry.title)).not.toContain('Resume Upload')
+    expect(entries.map((entry) => entry.title)).not.toContain('Users')
   })
 })

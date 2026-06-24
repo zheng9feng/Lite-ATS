@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/stores/auth-store'
 import { i18n } from '@/lib/i18n'
 import { type ResumeApplicant, type ResumeFile } from './resume-store'
 
@@ -22,6 +23,16 @@ const apiBaseUrl = import.meta.env.VITE_RESUME_API_BASE_URL ?? ''
 
 function apiUrl(path: string) {
   return `${apiBaseUrl}${path}`
+}
+
+function authHeaders() {
+  const { sessionToken } = useAuthStore.getState().auth
+
+  return sessionToken
+    ? {
+        Authorization: `Bearer ${sessionToken}`,
+      }
+    : undefined
 }
 
 async function parseApiResponse<T>(response: Response): Promise<T> {
@@ -53,6 +64,7 @@ export async function uploadResume({
 
   const response = await fetch(apiUrl('/api/resumes'), {
     body,
+    headers: authHeaders(),
     method: 'POST',
   })
 
@@ -60,7 +72,9 @@ export async function uploadResume({
 }
 
 export async function listResumes(): Promise<ResumeFile[]> {
-  const response = await fetch(apiUrl('/api/resumes'))
+  const response = await fetch(apiUrl('/api/resumes'), {
+    headers: authHeaders(),
+  })
 
   return parseApiResponse<ResumeFile[]>(response)
 }
@@ -81,6 +95,7 @@ export async function updateResume({
 
   const response = await fetch(apiUrl(`/api/resumes/${resumeId}`), {
     body,
+    headers: authHeaders(),
     method: 'PATCH',
   })
 
@@ -89,6 +104,7 @@ export async function updateResume({
 
 export async function deleteResume(resumeId: string): Promise<void> {
   const response = await fetch(apiUrl(`/api/resumes/${resumeId}`), {
+    headers: authHeaders(),
     method: 'DELETE',
   })
 
@@ -103,6 +119,7 @@ export async function createResumeShareLink(
   resumeId: string
 ): Promise<ResumeShareLink> {
   const response = await fetch(apiUrl(`/api/resumes/${resumeId}/share`), {
+    headers: authHeaders(),
     method: 'POST',
   })
 

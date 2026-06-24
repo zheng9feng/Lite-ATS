@@ -21,6 +21,7 @@ import {
   Command,
   GalleryVerticalEnd,
 } from 'lucide-react'
+import { hasEveryPermission, type AppPermission } from '@/lib/permissions'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
@@ -59,16 +60,19 @@ export const sidebarData: SidebarData = {
           title: 'Resume Upload',
           url: '/resumes/upload',
           icon: FileUp,
+          requiredPermissions: ['resumes:create'],
         },
         {
           title: 'Resume Preview',
           url: '/resumes/preview',
           icon: FileText,
+          requiredPermissions: ['resumes:read'],
         },
         {
           title: 'Users',
           url: '/users',
           icon: Users,
+          requiredPermissions: ['users:manage'],
         },
       ],
     },
@@ -176,4 +180,45 @@ export const sidebarData: SidebarData = {
       ],
     },
   ],
+}
+
+export function filterNavGroupsByPermissions(
+  navGroups: SidebarData['navGroups'],
+  permissions: string[]
+): SidebarData['navGroups'] {
+  return navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items
+        .map((item) => {
+          if (
+            item.requiredPermissions &&
+            !hasEveryPermission(permissions, item.requiredPermissions)
+          ) {
+            return undefined
+          }
+
+          if ('items' in item && item.items) {
+            const filteredItems = item.items.filter(
+              (subItem) =>
+                !subItem.requiredPermissions ||
+                hasEveryPermission(
+                  permissions,
+                  subItem.requiredPermissions as AppPermission[]
+                )
+            )
+
+            return filteredItems.length
+              ? {
+                  ...item,
+                  items: filteredItems,
+                }
+              : undefined
+          }
+
+          return item
+        })
+        .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+    }))
+    .filter((group) => group.items.length > 0)
 }

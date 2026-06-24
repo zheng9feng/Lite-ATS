@@ -10,16 +10,32 @@ const FORM_MESSAGES = {
 } as const
 
 const navigate = vi.fn()
-const setUserMock = vi.fn()
-const setAccessTokenMock = vi.fn()
+const loginWithPassword = vi.fn()
+const setAuthSnapshotMock = vi.fn()
+const authSnapshot = {
+  permissions: ['resumes:read'],
+  roles: ['normal'],
+  sessionToken: 'mock-session-token',
+  user: {
+    createdAt: '2026-06-23T00:00:00.000Z',
+    email: 'a@b.com',
+    id: 'user-1',
+    name: 'User One',
+    status: 'active',
+    updatedAt: '2026-06-23T00:00:00.000Z',
+  },
+}
 
 vi.mock('@/stores/auth-store', () => ({
   useAuthStore: () => ({
     auth: {
-      setUser: setUserMock,
-      setAccessToken: setAccessTokenMock,
+      setAuthSnapshot: setAuthSnapshotMock,
     },
   }),
+}))
+
+vi.mock('../../data/auth-api', () => ({
+  loginWithPassword: (...args: unknown[]) => loginWithPassword(...args),
 }))
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -59,6 +75,7 @@ describe('UserAuthForm', () => {
 
     beforeEach(async () => {
       vi.clearAllMocks()
+      loginWithPassword.mockResolvedValue(authSnapshot)
       screen = await render(<UserAuthForm />)
       emailInput = screen.getByRole('textbox', { name: /^Email$/i })
       passwordInput = screen.getByLabelText(/^Password$/i)
@@ -90,17 +107,14 @@ describe('UserAuthForm', () => {
 
       await userEvent.click(signInButton)
 
-      await vi.waitFor(() => expect(setUserMock).toHaveBeenCalledOnce())
-      expect(setUserMock).toHaveBeenCalledWith(
-        expect.objectContaining({
+      await vi.waitFor(() =>
+        expect(loginWithPassword).toHaveBeenCalledWith({
           email: 'a@b.com',
-          accountNo: expect.any(String),
-          role: expect.any(Array),
-          exp: expect.any(Number),
+          password: '1234567',
         })
       )
-      expect(setAccessTokenMock).toHaveBeenCalledOnce()
-      expect(setAccessTokenMock).toHaveBeenCalledWith('mock-access-token')
+      expect(setAuthSnapshotMock).toHaveBeenCalledOnce()
+      expect(setAuthSnapshotMock).toHaveBeenCalledWith(authSnapshot)
 
       await vi.waitFor(() =>
         expect(navigate).toHaveBeenCalledWith({ to: '/', replace: true })
@@ -110,6 +124,7 @@ describe('UserAuthForm', () => {
 
   it('navigates to redirectTo when provided', async () => {
     vi.clearAllMocks()
+    loginWithPassword.mockResolvedValue(authSnapshot)
 
     const { getByRole, getByLabelText } = await render(
       <UserAuthForm redirectTo='/settings' />
@@ -120,8 +135,8 @@ describe('UserAuthForm', () => {
 
     await userEvent.click(getByRole('button', { name: /Sign in/i }))
 
-    await vi.waitFor(() => expect(setUserMock).toHaveBeenCalledOnce())
-    expect(setAccessTokenMock).toHaveBeenCalledOnce()
+    await vi.waitFor(() => expect(setAuthSnapshotMock).toHaveBeenCalledOnce())
+    expect(setAuthSnapshotMock).toHaveBeenCalledWith(authSnapshot)
 
     await vi.waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({

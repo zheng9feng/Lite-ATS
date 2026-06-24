@@ -15,15 +15,6 @@ describe('auth middleware helpers', () => {
     expect(
       getPermissionDecision('resumes:delete', {
         permissions: ['resumes:read'],
-        roles: ['normal'],
-        user: {
-          createdAt: '2026-06-23T00:00:00.000Z',
-          email: 'normal@example.com',
-          id: 'user-1',
-          name: 'Normal User',
-          status: 'active',
-          updatedAt: '2026-06-23T00:00:00.000Z',
-        },
       })
     ).toEqual({ status: 403 })
   })
@@ -32,15 +23,6 @@ describe('auth middleware helpers', () => {
     expect(
       getPermissionDecision('resumes:delete', {
         permissions: ['resumes:delete'],
-        roles: ['admin'],
-        user: {
-          createdAt: '2026-06-23T00:00:00.000Z',
-          email: 'admin@example.com',
-          id: 'user-1',
-          name: 'Admin User',
-          status: 'active',
-          updatedAt: '2026-06-23T00:00:00.000Z',
-        },
       })
     ).toEqual({ status: 200 })
   })

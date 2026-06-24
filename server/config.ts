@@ -32,6 +32,11 @@ export function resolveServerConfig(env: ServerEnv = process.env) {
   return {
     bucketName: env.MINIO_BUCKET ?? 'resumes',
     databasePath: env.RESUME_DATABASE_PATH ?? 'server/.data/resumes.sqlite',
+    localAdmin: {
+      email: env.LOCAL_ADMIN_EMAIL ?? '',
+      name: env.LOCAL_ADMIN_NAME ?? 'Local Admin',
+      password: env.LOCAL_ADMIN_PASSWORD ?? '',
+    },
     minio: resolveMinioConfig(env),
     publicApiUrl:
       env.RESUME_API_PUBLIC_URL ?? `http://localhost:${apiPort}`,

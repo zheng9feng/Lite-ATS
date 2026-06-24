@@ -4,12 +4,18 @@
  */
 
 const DEFAULT_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
+const globalCookieStore = globalThis as typeof globalThis & {
+  __liteAtsMemoryCookies?: Map<string, string>
+}
+const memoryCookies =
+  globalCookieStore.__liteAtsMemoryCookies ?? new Map<string, string>()
+globalCookieStore.__liteAtsMemoryCookies = memoryCookies
 
 /**
  * Get a cookie value by name
  */
 export function getCookie(name: string): string | undefined {
-  if (typeof document === 'undefined') return undefined
+  if (typeof document === 'undefined') return memoryCookies.get(name)
 
   const value = `; ${document.cookie}`
   const parts = value.split(`; ${name}=`)
@@ -28,7 +34,14 @@ export function setCookie(
   value: string,
   maxAge: number = DEFAULT_MAX_AGE
 ): void {
-  if (typeof document === 'undefined') return
+  if (typeof document === 'undefined') {
+    if (maxAge <= 0) {
+      memoryCookies.delete(name)
+    } else {
+      memoryCookies.set(name, value)
+    }
+    return
+  }
 
   document.cookie = `${name}=${value}; path=/; max-age=${maxAge}`
 }
@@ -37,7 +50,10 @@ export function setCookie(
  * Remove a cookie by setting its max age to 0
  */
 export function removeCookie(name: string): void {
-  if (typeof document === 'undefined') return
+  if (typeof document === 'undefined') {
+    memoryCookies.delete(name)
+    return
+  }
 
   document.cookie = `${name}=; path=/; max-age=0`
 }
