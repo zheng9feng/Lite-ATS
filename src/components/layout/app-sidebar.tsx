@@ -20,6 +20,7 @@ export function AppSidebar() {
   const { t } = useTranslation()
   const { collapsible, variant } = useLayout()
   const permissions = useAuthStore((state) => state.auth.permissions)
+  const user = useAuthStore((state) => state.auth.user)
   const navGroups = useMemo(
     () =>
       translateSidebarData(
@@ -44,7 +45,15 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={sidebarData.user} />
+        {user && (
+          <NavUser
+            user={{
+              avatar: '',
+              email: user.email,
+              name: user.name,
+            }}
+          />
+        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
