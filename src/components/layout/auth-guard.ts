@@ -1,5 +1,5 @@
-import { type AppPermission, hasEveryPermission } from '@/lib/permissions'
 import { getLoginRedirectTarget } from '@/lib/login-redirect'
+import { type AppPermission, hasEveryPermission } from '@/lib/permissions'
 
 type AuthGuardDecision =
   | { type: 'allow' }
