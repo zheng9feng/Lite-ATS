@@ -22,9 +22,14 @@ describe('createSqliteAuthRepository', () => {
 
     const repository = createSqliteAuthRepository({ databasePath })
 
-    expect(repository.listRoles().map((role) => role.name)).toEqual([
-      'admin',
-      'normal',
+    expect(
+      repository.listRoles().map((role) => ({
+        isSystem: role.isSystem,
+        name: role.name,
+      }))
+    ).toEqual([
+      { isSystem: true, name: 'admin' },
+      { isSystem: true, name: 'normal' },
     ])
     expect(repository.listRolePermissions('admin')).toEqual(
       expect.arrayContaining([
@@ -38,6 +43,64 @@ describe('createSqliteAuthRepository', () => {
       ])
     )
     expect(repository.listRolePermissions('normal')).toEqual(['resumes:read'])
+
+    repository.close()
+  })
+
+  it('stores custom roles, permissions, and user counts', async () => {
+    const databasePath = join(tempDir, 'auth.sqlite')
+    await migrateResumeDatabase({ databasePath })
+
+    const repository = createSqliteAuthRepository({ databasePath })
+    const reviewerRole = repository.createRole({
+      description: 'Reviews resumes.',
+      name: 'reviewer',
+    })
+    const readPermission = repository.findPermissionByName('resumes:read')
+    const sharePermission = repository.findPermissionByName('resumes:share')
+
+    if (!readPermission || !sharePermission) {
+      throw new Error('Expected resume permissions to be seeded')
+    }
+
+    repository.setRolePermissions(reviewerRole.id, [
+      readPermission.id,
+      sharePermission.id,
+    ])
+
+    const user = repository.createUser({
+      email: 'reviewer@example.com',
+      name: 'Resume Reviewer',
+      passwordHash: 'hash',
+      status: 'active',
+    })
+    repository.setUserRoles(user.id, [reviewerRole.id])
+
+    expect(repository.findRoleByName('reviewer')).toMatchObject({
+      description: 'Reviews resumes.',
+      isSystem: false,
+      name: 'reviewer',
+    })
+    expect(repository.listRolePermissions('reviewer')).toEqual([
+      'resumes:read',
+      'resumes:share',
+    ])
+    expect(repository.countRoleUsers(reviewerRole.id)).toBe(1)
+
+    repository.updateRole(reviewerRole.id, {
+      description: 'Screens shared resumes.',
+      name: 'resume-reviewer',
+    })
+
+    expect(repository.findRoleById(reviewerRole.id)).toMatchObject({
+      description: 'Screens shared resumes.',
+      name: 'resume-reviewer',
+    })
+
+    repository.deleteUser(user.id)
+    repository.deleteRole(reviewerRole.id)
+
+    expect(repository.findRoleById(reviewerRole.id)).toBeUndefined()
 
     repository.close()
   })
@@ -70,7 +133,9 @@ describe('createSqliteAuthRepository', () => {
     })
 
     expect(repository.findUserByEmail('ADMIN@example.com')?.id).toBe(user.id)
-    expect(repository.getUserRoles(user.id)).toEqual(['admin'])
+    expect(repository.getUserRoles(user.id)).toEqual([
+      expect.objectContaining({ name: 'admin' }),
+    ])
     expect(repository.getUserPermissions(user.id)).toEqual(
       expect.arrayContaining(['resumes:read', 'rbac:manage'])
     )

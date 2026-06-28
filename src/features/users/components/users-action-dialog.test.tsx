@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, type RenderResult } from 'vitest-browser-react'
 import { type UserEvent, userEvent } from 'vitest/browser'
-import { showSubmittedData } from '@/lib/show-submitted-data'
 import { type User } from '../data/schema'
 import { UsersActionDialog } from './users-action-dialog'
+
+const createUser = vi.hoisted(() => vi.fn())
+const listUserRoleOptions = vi.hoisted(() => vi.fn())
+const updateUser = vi.hoisted(() => vi.fn())
 
 const VALIDATION_MESSAGES = {
   firstName: 'First Name is required.',
@@ -27,15 +30,28 @@ const MOCK_USER: User = {
   email: 'alex@smith.com',
   phoneNumber: '+19999999999',
   status: 'active',
-  role: 'superadmin',
+  role: 'admin',
+  roleId: 'role-admin',
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-02-02'),
 }
 
-vi.mock('@/lib/show-submitted-data', () => ({ showSubmittedData: vi.fn() }))
+vi.mock('../data/users-api', () => ({
+  createUser: (...args: unknown[]) => createUser(...args),
+  listUserRoleOptions: (...args: unknown[]) => listUserRoleOptions(...args),
+  updateUser: (...args: unknown[]) => updateUser(...args),
+}))
 
 describe('UsersActionDialog', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    createUser.mockResolvedValue({})
+    updateUser.mockResolvedValue({})
+    listUserRoleOptions.mockResolvedValue([
+      { id: 'role-admin', name: 'admin' },
+      { id: 'role-reviewer', name: 'reviewer' },
+    ])
+  })
 
   describe('add user', () => {
     it('renders title and description', async () => {
@@ -101,6 +117,18 @@ describe('UsersActionDialog', () => {
       await expect.element(confirmPassword).toBeEnabled()
     })
 
+    it('loads role options from the database role catalog', async () => {
+      const screen = await render(
+        <UsersActionDialog open onOpenChange={vi.fn()} />
+      )
+
+      await userEvent.click(screen.getByRole('combobox', { name: /Role/i }))
+
+      await expect
+        .element(screen.getByRole('option', { name: 'Reviewer' }))
+        .toBeInTheDocument()
+    })
+
     it('shows password validation messages when password is invalid', async () => {
       const { getByRole, getByText } = await render(
         <UsersActionDialog open onOpenChange={vi.fn()} />
@@ -152,7 +180,7 @@ describe('UsersActionDialog', () => {
         .not.toBeInTheDocument()
     })
 
-    it('shows the submitted data when the form is submitted successfully', async () => {
+    it('creates the user when the form is submitted successfully', async () => {
       const onOpenChange = vi.fn()
 
       const screen = await render(
@@ -169,18 +197,34 @@ describe('UsersActionDialog', () => {
       expect(onOpenChange).toHaveBeenCalledOnce()
       expect(onOpenChange).toHaveBeenCalledWith(false)
 
-      expect(showSubmittedData).toHaveBeenCalledOnce()
-      expect(showSubmittedData).toHaveBeenCalledWith({
-        firstName: MOCK_USER.firstName,
-        lastName: MOCK_USER.lastName,
-        username: MOCK_USER.username,
+      expect(createUser).toHaveBeenCalledOnce()
+      expect(createUser).toHaveBeenCalledWith({
         email: MOCK_USER.email,
-        role: MOCK_USER.role,
-        phoneNumber: MOCK_USER.phoneNumber,
+        name: `${MOCK_USER.firstName} ${MOCK_USER.lastName}`,
         password: 'S3cur3P@ssw0rd',
-        confirmPassword: 'S3cur3P@ssw0rd',
-        isEdit: false,
+        roleId: 'role-admin',
+        status: 'active',
       })
+    })
+
+    it('keeps the dialog open when create user fails', async () => {
+      createUser.mockRejectedValue(new Error('Email already exists.'))
+      const onOpenChange = vi.fn()
+      const screen = await render(
+        <UsersActionDialog open onOpenChange={onOpenChange} />
+      )
+
+      await fillRequiredProfileFields(userEvent, screen, MOCK_USER)
+      await fillPasswords(userEvent, screen, 'S3cur3P@ssw0rd', 'S3cur3P@ssw0rd')
+
+      await userEvent.click(
+        screen.getByRole('button', { name: /Save Changes/i })
+      )
+
+      await expect
+        .element(screen.getByText('Email already exists.'))
+        .toBeInTheDocument()
+      expect(onOpenChange).not.toHaveBeenCalled()
     })
   })
 
@@ -218,17 +262,12 @@ describe('UsersActionDialog', () => {
       expect(onOpenChange).toHaveBeenCalledOnce()
       expect(onOpenChange).toHaveBeenCalledWith(false)
 
-      expect(showSubmittedData).toHaveBeenCalledOnce()
-      expect(showSubmittedData).toHaveBeenCalledWith({
-        firstName: MOCK_USER.firstName,
-        lastName: MOCK_USER.lastName,
-        username: MOCK_USER.username,
+      expect(updateUser).toHaveBeenCalledOnce()
+      expect(updateUser).toHaveBeenCalledWith(MOCK_USER.id, {
         email: MOCK_USER.email,
-        phoneNumber: MOCK_USER.phoneNumber,
-        role: MOCK_USER.role,
-        password: '',
-        confirmPassword: '',
-        isEdit: true,
+        name: `${MOCK_USER.firstName} ${MOCK_USER.lastName}`,
+        roleId: MOCK_USER.roleId,
+        status: MOCK_USER.status,
       })
     })
 
@@ -253,7 +292,7 @@ describe('UsersActionDialog', () => {
         .toBeInTheDocument()
     })
 
-    it('shows the submitted data when the form is submitted successfully', async () => {
+    it('updates the user when the form is submitted successfully', async () => {
       const onOpenChange = vi.fn()
       const screen = await render(
         <UsersActionDialog
@@ -283,17 +322,13 @@ describe('UsersActionDialog', () => {
       expect(onOpenChange).toHaveBeenCalledOnce()
       expect(onOpenChange).toHaveBeenCalledWith(false)
 
-      expect(showSubmittedData).toHaveBeenCalledOnce()
-      expect(showSubmittedData).toHaveBeenCalledWith({
-        firstName: EDIT_SUCCESS_FIRST_NAME,
-        lastName: MOCK_USER.lastName,
-        username: MOCK_USER.username,
+      expect(updateUser).toHaveBeenCalledOnce()
+      expect(updateUser).toHaveBeenCalledWith(MOCK_USER.id, {
         email: MOCK_USER.email,
-        phoneNumber: MOCK_USER.phoneNumber,
-        role: MOCK_USER.role,
-        password: EDIT_SUCCESS_PASSWORD,
-        confirmPassword: EDIT_SUCCESS_PASSWORD,
-        isEdit: true,
+        name: `${EDIT_SUCCESS_FIRST_NAME} ${MOCK_USER.lastName}`,
+        password: 'S3cur3P@ssw0rd',
+        roleId: MOCK_USER.roleId,
+        status: MOCK_USER.status,
       })
     })
   })
@@ -328,7 +363,10 @@ async function fillRequiredProfileFields(
   const roleSelect = screen.getByRole('combobox', { name: /Role/i })
   await user.click(roleSelect)
   await user.click(
-    screen.getByRole('option', { name: overrides?.roleOption ?? 'Superadmin' })
+    screen.getByRole('option', {
+      exact: true,
+      name: overrides?.roleOption ?? 'Admin',
+    })
   )
 }
 

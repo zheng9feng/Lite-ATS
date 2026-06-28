@@ -145,4 +145,25 @@ describe('UserAuthForm', () => {
       })
     )
   })
+
+  it('falls back to the default route when redirectTo points at sign-in', async () => {
+    vi.clearAllMocks()
+    loginWithPassword.mockResolvedValue(authSnapshot)
+
+    const { getByRole, getByLabelText } = await render(
+      <UserAuthForm redirectTo='/sign-in?redirect=%2Fsign-in%3Fredirect%3D%252F' />
+    )
+
+    await userEvent.fill(getByRole('textbox', { name: /Email/i }), 'a@b.com')
+    await userEvent.fill(getByLabelText('Password'), '1234567')
+
+    await userEvent.click(getByRole('button', { name: /Sign in/i }))
+
+    await vi.waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/',
+        replace: true,
+      })
+    )
+  })
 })

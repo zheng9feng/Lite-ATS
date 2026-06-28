@@ -49,7 +49,9 @@ const users: User[] = [
 function renderUsersTable() {
   return render(
     <LanguageProvider>
-      <UsersTable data={users} navigate={vi.fn()} search={{}} />
+      <UsersProvider>
+        <UsersTable data={users} navigate={vi.fn()} search={{}} />
+      </UsersProvider>
     </LanguageProvider>
   )
 }

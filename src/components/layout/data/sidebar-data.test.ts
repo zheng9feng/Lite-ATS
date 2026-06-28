@@ -38,5 +38,17 @@ describe('sidebarData', () => {
     expect(entries.map((entry) => entry.title)).toContain('Resume Preview')
     expect(entries.map((entry) => entry.title)).not.toContain('Resume Upload')
     expect(entries.map((entry) => entry.title)).not.toContain('Users')
+    expect(entries.map((entry) => entry.title)).not.toContain('Permissions')
+  })
+
+  it('shows the permissions module to RBAC managers', () => {
+    const entries = collectNavEntries(
+      filterNavGroupsByPermissions(sidebarData.navGroups, ['rbac:manage'])
+    )
+
+    expect(entries).toContainEqual({
+      title: 'Permissions',
+      url: '/permissions',
+    })
   })
 })

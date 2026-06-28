@@ -9,7 +9,7 @@ export const permissions = [
 ] as const
 
 export type Permission = (typeof permissions)[number]
-export type RoleName = 'admin' | 'normal'
+export type RoleName = string
 export type UserStatus = 'active' | 'inactive'
 
 export type AuthUser = {
@@ -27,6 +27,7 @@ export type PublicAuthUser = Omit<AuthUser, 'passwordHash'>
 export type AuthRole = {
   description: string
   id: string
+  isSystem: boolean
   name: RoleName
 }
 
@@ -51,6 +52,18 @@ export type AuthPrincipal = {
   user: PublicAuthUser
 }
 
+export type AuthUserRole = AuthRole
+
+export type AuthUserWithRoles = PublicAuthUser & {
+  permissions: Permission[]
+  roles: AuthUserRole[]
+}
+
+export type AuthRoleDetails = AuthRole & {
+  permissions: Permission[]
+  userCount: number
+}
+
 export type CreateUserPayload = {
   email: string
   name: string
@@ -63,6 +76,16 @@ export type UpdateUserPayload = Partial<{
   name: string
   passwordHash: string
   status: UserStatus
+}>
+
+export type CreateRolePayload = {
+  description: string
+  name: string
+}
+
+export type UpdateRolePayload = Partial<{
+  description: string
+  name: string
 }>
 
 export function toPublicAuthUser(user: AuthUser): PublicAuthUser {

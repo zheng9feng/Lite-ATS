@@ -131,4 +131,151 @@ describe('createAuthService', () => {
 
     repository.close()
   })
+
+  it('manages custom roles and permission assignments', async () => {
+    const databasePath = join(tempDir, 'auth.sqlite')
+    await migrateResumeDatabase({ databasePath })
+    const repository = createSqliteAuthRepository({ databasePath })
+    const service = createAuthService({ repository })
+
+    const role = service.createRole({
+      description: 'Can screen and share resumes.',
+      name: 'reviewer',
+      permissions: ['resumes:read', 'resumes:share'],
+    })
+
+    expect(role).toMatchObject({
+      description: 'Can screen and share resumes.',
+      isSystem: false,
+      name: 'reviewer',
+      permissions: ['resumes:read', 'resumes:share'],
+      userCount: 0,
+    })
+
+    const updatedRole = service.updateRole(role.id, {
+      description: 'Can screen resumes.',
+      name: 'resume-reviewer',
+      permissions: ['resumes:read'],
+    })
+
+    expect(updatedRole).toMatchObject({
+      description: 'Can screen resumes.',
+      name: 'resume-reviewer',
+      permissions: ['resumes:read'],
+    })
+
+    service.deleteRole(role.id)
+
+    expect(service.listRoles().map((item) => item.name)).not.toContain(
+      'resume-reviewer'
+    )
+
+    repository.close()
+  })
+
+  it('assigns multiple roles by ID and returns effective permission unions', async () => {
+    const databasePath = join(tempDir, 'auth.sqlite')
+    await migrateResumeDatabase({ databasePath })
+    const repository = createSqliteAuthRepository({ databasePath })
+    const service = createAuthService({ repository })
+    const readRole = service.createRole({
+      description: 'Can read resumes.',
+      name: 'reader',
+      permissions: ['resumes:read'],
+    })
+    const shareRole = service.createRole({
+      description: 'Can share resumes.',
+      name: 'sharer',
+      permissions: ['resumes:share'],
+    })
+    const user = await service.createUser({
+      email: 'multi-role@example.com',
+      name: 'Multi Role',
+      password: 'password123',
+      status: 'active',
+    })
+
+    service.setUserRoles(user.id, [readRole.id, shareRole.id])
+
+    expect(service.listUsers()).toContainEqual(
+      expect.objectContaining({
+        email: 'multi-role@example.com',
+        permissions: ['resumes:read', 'resumes:share'],
+        roles: [
+          expect.objectContaining({ id: readRole.id, name: 'reader' }),
+          expect.objectContaining({ id: shareRole.id, name: 'sharer' }),
+        ],
+      })
+    )
+
+    repository.close()
+  })
+
+  it('protects system roles and prevents RBAC lockout', async () => {
+    const databasePath = join(tempDir, 'auth.sqlite')
+    await migrateResumeDatabase({ databasePath })
+    const repository = createSqliteAuthRepository({ databasePath })
+    const adminRole = repository.findRoleByName('admin')
+
+    if (!adminRole) {
+      throw new Error('Expected admin role to be seeded')
+    }
+
+    const adminUser = repository.createUser({
+      email: 'admin@example.com',
+      name: 'Admin User',
+      passwordHash: await hashPassword('password123'),
+      status: 'active',
+    })
+    repository.setUserRoles(adminUser.id, [adminRole.id])
+
+    const service = createAuthService({ repository })
+
+    expect(() =>
+      service.updateRole(adminRole.id, { name: 'owner' })
+    ).toThrow('System roles cannot be renamed.')
+    expect(() =>
+      service.updateRole(adminRole.id, {
+        permissions: ['resumes:read'],
+      })
+    ).toThrow('The admin role must keep RBAC management access.')
+    expect(() => service.deleteRole(adminRole.id)).toThrow(
+      'System roles cannot be deleted.'
+    )
+    expect(() => service.setUserRoles(adminUser.id, [])).toThrow(
+      'At least one active user must keep RBAC management access.'
+    )
+
+    repository.close()
+  })
+
+  it('rejects custom role permission changes that would remove the last RBAC manager', async () => {
+    const databasePath = join(tempDir, 'auth.sqlite')
+    await migrateResumeDatabase({ databasePath })
+    const repository = createSqliteAuthRepository({ databasePath })
+    const service = createAuthService({ repository })
+    const rbacRole = service.createRole({
+      description: 'Can manage RBAC.',
+      name: 'rbac-owner',
+      permissions: ['rbac:manage'],
+    })
+    const user = await service.createUser({
+      email: 'owner@example.com',
+      name: 'RBAC Owner',
+      password: 'password123',
+      status: 'active',
+    })
+    service.setUserRoles(user.id, [rbacRole.id])
+
+    expect(() =>
+      service.updateRole(rbacRole.id, {
+        permissions: ['resumes:read'],
+      })
+    ).toThrow('At least one active user must keep RBAC management access.')
+    expect(
+      service.listRoles().find((role) => role.id === rbacRole.id)?.permissions
+    ).toEqual(['rbac:manage'])
+
+    repository.close()
+  })
 })

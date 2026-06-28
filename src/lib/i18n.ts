@@ -133,6 +133,7 @@ export const resources = {
         notFound: '未找到',
         otp: '一次性密码',
         overview: '概览',
+        permissions: '权限',
         products: '产品',
         profile: '个人资料',
         reports: '报表',
@@ -193,6 +194,39 @@ export const resources = {
           selectRow: '选择行',
         },
         title: '用户列表',
+      },
+      permissionsPage: {
+        actions: {
+          create: '创建角色',
+          delete: '删除',
+          save: '保存',
+        },
+        api: {
+          failed: '权限请求失败。',
+        },
+        createRole: {
+          description: '创建自定义角色后再分配权限。',
+          title: '新建角色',
+        },
+        description: '配置角色权限并管理用户角色资源。',
+        fields: {
+          description: '描述',
+          roleName: '角色名称',
+        },
+        roleEditor: {
+          description: '为选中的角色配置权限。',
+        },
+        systemRole: '系统角色',
+        tabs: {
+          roles: '角色配置',
+          users: '用户角色',
+        },
+        title: '权限管理',
+        userCount: '{{count}} 个用户',
+        userRoles: {
+          assignedRoles: '已分配角色',
+          effectivePermissions: '有效权限',
+        },
       },
       sidebar: {
         description: '显示移动端侧边栏。',
@@ -594,6 +628,7 @@ export const resources = {
         notFound: 'Not Found',
         otp: 'OTP',
         overview: 'Overview',
+        permissions: 'Permissions',
         products: 'Products',
         profile: 'Profile',
         reports: 'Reports',
@@ -654,6 +689,40 @@ export const resources = {
           selectRow: 'Select row',
         },
         title: 'User List',
+      },
+      permissionsPage: {
+        actions: {
+          create: 'Create Role',
+          delete: 'Delete',
+          save: 'Save',
+        },
+        api: {
+          failed: 'Permission request failed.',
+        },
+        createRole: {
+          description: 'Create a custom role before assigning permissions.',
+          title: 'New Role',
+        },
+        description:
+          'Configure role permissions and manage user role resources.',
+        fields: {
+          description: 'Description',
+          roleName: 'Role Name',
+        },
+        roleEditor: {
+          description: 'Configure permissions for the selected role.',
+        },
+        systemRole: 'System Role',
+        tabs: {
+          roles: 'Role Configuration',
+          users: 'User Roles',
+        },
+        title: 'Permissions Management',
+        userCount: '{{count}} users',
+        userRoles: {
+          assignedRoles: 'Assigned Roles',
+          effectivePermissions: 'Effective Permissions',
+        },
       },
       sidebar: {
         description: 'Displays the mobile sidebar.',

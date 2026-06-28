@@ -14,7 +14,13 @@ export function getUserStatusLabel(t: TFunction, status: User['status']) {
 }
 
 export function getUserRoleLabel(t: TFunction, role: User['role']) {
-  return t(`usersPage.roles.${role}`)
+  return t(`usersPage.roles.${role}`, {
+    defaultValue: role
+      .split(/[-_\s]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' '),
+  })
 }
 
 export function getUsersColumns(t: TFunction): ColumnDef<User>[] {
@@ -152,13 +158,9 @@ export function getUsersColumns(t: TFunction): ColumnDef<User>[] {
         const { role } = row.original
         const userType = roles.find(({ value }) => value === role)
 
-        if (!userType) {
-          return null
-        }
-
         return (
           <div className='flex items-center gap-x-2'>
-            {userType.icon && (
+            {userType?.icon && (
               <userType.icon size={16} className='text-muted-foreground' />
             )}
             <span className='text-sm capitalize'>

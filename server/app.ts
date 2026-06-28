@@ -145,6 +145,7 @@ export function createServerApp({
             email: readString(request.body.email),
             name: readString(request.body.name),
             password: String(request.body.password ?? ''),
+            roleIds: readStringArray(request.body.roleIds),
             roles: readStringArray(request.body.roles) as RoleName[],
             status: request.body.status === 'inactive' ? 'inactive' : 'active',
           })
@@ -198,7 +199,7 @@ export function createServerApp({
       try {
         authService.setUserRoles(
           String(request.params.userId),
-          readStringArray(request.body.roles) as RoleName[]
+          readStringArray(request.body.roleIds)
         )
         response.status(204).send()
       } catch (error) {
@@ -212,6 +213,65 @@ export function createServerApp({
     requirePermission('rbac:manage'),
     (_request, response) => {
       response.json(authService.listRoles())
+    }
+  )
+
+  app.post(
+    '/api/roles',
+    requirePermission('rbac:manage'),
+    (request, response) => {
+      try {
+        response.status(201).json(
+          authService.createRole({
+            description: readString(request.body.description),
+            name: readString(request.body.name),
+            permissions: readStringArray(
+              request.body.permissions
+            ) as Permission[],
+          })
+        )
+      } catch (error) {
+        sendError(response, error)
+      }
+    }
+  )
+
+  app.patch(
+    '/api/roles/:roleId',
+    requirePermission('rbac:manage'),
+    (request, response) => {
+      try {
+        response.json(
+          authService.updateRole(String(request.params.roleId), {
+            description:
+              request.body.description === undefined
+                ? undefined
+                : readString(request.body.description),
+            name:
+              request.body.name === undefined
+                ? undefined
+                : readString(request.body.name),
+            permissions: Array.isArray(request.body.permissions)
+              ? (readStringArray(request.body.permissions) as Permission[])
+              : undefined,
+          })
+        )
+      } catch (error) {
+        sendError(response, error)
+      }
+    }
+  )
+
+  app.delete(
+    '/api/roles/:roleId',
+    requirePermission('rbac:manage'),
+    (request, response) => {
+      try {
+        authService.deleteRole(String(request.params.roleId))
+        response.status(204).send()
+      } catch (error) {
+        sendError(response, error)
+      }
     }
   )
 

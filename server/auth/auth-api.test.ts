@@ -54,7 +54,7 @@ async function requestApp(
       }
 
       resolve(
-        new Response(Buffer.concat(chunks), {
+        new Response(chunks.length ? Buffer.concat(chunks) : undefined, {
           headers: Object.entries(response.getHeaders()).reduce(
             (headers, [key, value]) => {
               if (typeof value === 'string') {
@@ -210,5 +210,155 @@ describe('auth API integration', () => {
     })
 
     expect(response.status).toBe(403)
+  })
+
+  it('requires RBAC access for role management endpoints', async () => {
+    await api.request('/api/auth/login', {
+      body: JSON.stringify({
+        email: 'normal@example.com',
+        password: 'password123',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+
+    const response = await api.request('/api/roles', {
+      body: JSON.stringify({
+        description: 'Can review resumes.',
+        name: 'reviewer',
+        permissions: ['resumes:read'],
+      }),
+      headers: {
+        Authorization: 'Bearer session-token',
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(403)
+  })
+
+  it('manages roles and assigns users to multiple roles by ID', async () => {
+    const loginResponse = await api.request('/api/auth/login', {
+      body: JSON.stringify({
+        email: 'admin@example.com',
+        password: 'password123',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const loginBody = (await loginResponse.json()) as {
+      sessionToken: string
+    }
+    const authHeaders = {
+      Authorization: `Bearer ${loginBody.sessionToken}`,
+      'Content-Type': 'application/json',
+    }
+
+    const createRoleResponse = await api.request('/api/roles', {
+      body: JSON.stringify({
+        description: 'Can review resumes.',
+        name: 'reviewer',
+        permissions: ['resumes:read'],
+      }),
+      headers: authHeaders,
+      method: 'POST',
+    })
+    const reviewerRole = (await createRoleResponse.json()) as {
+      id: string
+      isSystem: boolean
+      name: string
+      permissions: string[]
+    }
+
+    expect(createRoleResponse.status).toBe(201)
+    expect(reviewerRole).toMatchObject({
+      isSystem: false,
+      name: 'reviewer',
+      permissions: ['resumes:read'],
+    })
+
+    const createUserResponse = await api.request('/api/users', {
+      body: JSON.stringify({
+        email: 'new-reviewer@example.com',
+        name: 'New Reviewer',
+        password: 'password123',
+        roleIds: [reviewerRole.id],
+        status: 'active',
+      }),
+      headers: authHeaders,
+      method: 'POST',
+    })
+    const createdUser = (await createUserResponse.json()) as {
+      roles: Array<{ id: string; name: string }>
+    }
+
+    expect(createUserResponse.status).toBe(201)
+    expect(createdUser.roles).toEqual([
+      expect.objectContaining({ id: reviewerRole.id, name: 'reviewer' }),
+    ])
+
+    const usersResponse = await api.request('/api/users', {
+      headers: {
+        Authorization: `Bearer ${loginBody.sessionToken}`,
+      },
+    })
+    const users = (await usersResponse.json()) as Array<{
+      email: string
+      id: string
+      roles: Array<{ id: string; name: string }>
+    }>
+    const normalUser = users.find((user) => user.email === 'normal@example.com')
+
+    if (!normalUser) {
+      throw new Error('Expected normal user in test API')
+    }
+
+    const assignResponse = await api.request(
+      `/api/users/${normalUser.id}/roles`,
+      {
+        body: JSON.stringify({
+          roleIds: [reviewerRole.id],
+        }),
+        headers: authHeaders,
+        method: 'PUT',
+      }
+    )
+
+    expect(assignResponse.status).toBe(204)
+
+    const updatedUsersResponse = await api.request('/api/users', {
+      headers: {
+        Authorization: `Bearer ${loginBody.sessionToken}`,
+      },
+    })
+    const updatedUsers = (await updatedUsersResponse.json()) as Array<{
+      email: string
+      permissions: string[]
+      roles: Array<{ id: string; name: string }>
+    }>
+
+    expect(
+      updatedUsers.find((user) => user.email === 'normal@example.com')
+    ).toMatchObject({
+      permissions: ['resumes:read'],
+      roles: [expect.objectContaining({ id: reviewerRole.id })],
+    })
+
+    const deleteRoleResponse = await api.request(`/api/roles/${reviewerRole.id}`, {
+      headers: {
+        Authorization: `Bearer ${loginBody.sessionToken}`,
+      },
+      method: 'DELETE',
+    })
+
+    expect(deleteRoleResponse.status).toBe(400)
+    await expect(deleteRoleResponse.json()).resolves.toEqual({
+      error: 'Assigned roles cannot be deleted.',
+    })
   })
 })

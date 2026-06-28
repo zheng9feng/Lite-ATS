@@ -7,9 +7,11 @@ import {
   type AuthRole,
   type AuthSession,
   type AuthUser,
+  type CreateRolePayload,
   type CreateUserPayload,
   type Permission,
   type RoleName,
+  type UpdateRolePayload,
   type UpdateUserPayload,
   type UserStatus,
 } from './auth-types'
@@ -31,6 +33,7 @@ type UserRow = {
 type RoleRow = {
   description: string
   id: string
+  is_system: 0 | 1
   name: RoleName
 }
 
@@ -77,6 +80,7 @@ function toRole(row: RoleRow): AuthRole {
   return {
     description: row.description,
     id: row.id,
+    isSystem: Boolean(row.is_system),
     name: row.name,
   }
 }
@@ -109,19 +113,55 @@ export function createSqliteAuthRepository({
   database.pragma('foreign_keys = ON')
 
   const listRoles = database.prepare(`
-    SELECT id, name, description
+    SELECT id, name, description, is_system
     FROM t_roles
     ORDER BY CASE name WHEN 'admin' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END, name
   `)
   const findRoleByName = database.prepare<string>(`
-    SELECT id, name, description
+    SELECT id, name, description, is_system
     FROM t_roles
     WHERE name = ?
   `)
   const findRoleById = database.prepare<string>(`
-    SELECT id, name, description
+    SELECT id, name, description, is_system
     FROM t_roles
     WHERE id = ?
+  `)
+  const insertRole = database.prepare(`
+    INSERT INTO t_roles (id, name, description, is_system)
+    VALUES (@id, @name, @description, 0)
+  `)
+  const updateRole = database.prepare(`
+    UPDATE t_roles
+    SET name = @name, description = @description
+    WHERE id = @id
+  `)
+  const deleteRole = database.prepare<string>(`
+    DELETE FROM t_roles
+    WHERE id = ?
+  `)
+  const countRoleUsers = database.prepare<string>(`
+    SELECT COUNT(*) AS count
+    FROM t_user_roles
+    WHERE role_id = ?
+  `)
+  const countActiveUsersWithPermission = database.prepare<string>(`
+    SELECT COUNT(DISTINCT u.id) AS count
+    FROM t_users u
+    INNER JOIN t_user_roles ur ON ur.user_id = u.id
+    INNER JOIN t_role_permissions rp ON rp.role_id = ur.role_id
+    INNER JOIN t_permissions p ON p.id = rp.permission_id
+    WHERE u.status = 'active' AND p.name = ?
+  `)
+  const countActiveUsersWithPermissionExcludingRole = database.prepare(`
+    SELECT COUNT(DISTINCT u.id) AS count
+    FROM t_users u
+    INNER JOIN t_user_roles ur ON ur.user_id = u.id
+    INNER JOIN t_role_permissions rp ON rp.role_id = ur.role_id
+    INNER JOIN t_permissions p ON p.id = rp.permission_id
+    WHERE u.status = 'active'
+      AND p.name = @permission
+      AND ur.role_id <> @roleId
   `)
   const listPermissions = database.prepare(`
     SELECT id, name, description
@@ -198,7 +238,7 @@ export function createSqliteAuthRepository({
     VALUES (@userId, @roleId)
   `)
   const getUserRoles = database.prepare<string>(`
-    SELECT r.name
+    SELECT r.id, r.name, r.description, r.is_system
     FROM t_roles r
     INNER JOIN t_user_roles ur ON ur.role_id = r.id
     WHERE ur.user_id = ?
@@ -271,6 +311,22 @@ export function createSqliteAuthRepository({
 
   return {
     close: () => database.close(),
+    createRole: (payload: CreateRolePayload) => {
+      const role: AuthRole = {
+        description: payload.description,
+        id: randomUUID(),
+        isSystem: false,
+        name: payload.name,
+      }
+
+      insertRole.run({
+        description: role.description,
+        id: role.id,
+        name: role.name,
+      })
+
+      return role
+    },
     createUser: (payload: CreateUserPayload) => {
       const now = new Date().toISOString()
       const user: AuthUser = {
@@ -297,6 +353,9 @@ export function createSqliteAuthRepository({
     },
     deleteSession: (sessionId: string) => {
       deleteSession.run(sessionId)
+    },
+    deleteRole: (roleId: string) => {
+      deleteRole.run(roleId)
     },
     deleteUser: (userId: string) => {
       deleteUser.run(userId)
@@ -342,9 +401,26 @@ export function createSqliteAuthRepository({
         (row) => row.name
       ),
     getUserRoles: (userId: string) =>
-      (getUserRoles.all(userId) as { name: RoleName }[]).map(
-        (row) => row.name
-      ),
+      (getUserRoles.all(userId) as RoleRow[]).map((row) => toRole(row)),
+    countActiveUsersWithPermission: (permission: Permission) =>
+      (
+        countActiveUsersWithPermission.get(permission) as
+          | { count: number }
+          | undefined
+      )?.count ?? 0,
+    countActiveUsersWithPermissionExcludingRole: (
+      permission: Permission,
+      roleId: string
+    ) =>
+      (
+        countActiveUsersWithPermissionExcludingRole.get({
+          permission,
+          roleId,
+        }) as { count: number } | undefined
+      )?.count ?? 0,
+    countRoleUsers: (roleId: string) =>
+      (countRoleUsers.get(roleId) as { count: number } | undefined)?.count ??
+      0,
     listPermissions: () =>
       (listPermissions.all() as PermissionRow[]).map((row) =>
         toPermission(row)
@@ -376,6 +452,29 @@ export function createSqliteAuthRepository({
         id: sessionId,
         lastUsedAt: lastUsedAt.toISOString(),
       })
+    },
+    updateRole: (roleId: string, payload: UpdateRolePayload) => {
+      const currentRole = (findRoleById.get(roleId) as RoleRow | undefined)
+        ? toRole(findRoleById.get(roleId) as RoleRow)
+        : undefined
+
+      if (!currentRole) {
+        return undefined
+      }
+
+      const nextRole: AuthRole = {
+        ...currentRole,
+        description: payload.description ?? currentRole.description,
+        name: payload.name ?? currentRole.name,
+      }
+
+      updateRole.run({
+        description: nextRole.description,
+        id: nextRole.id,
+        name: nextRole.name,
+      })
+
+      return nextRole
     },
     updateUser: (userId: string, payload: UpdateUserPayload) => {
       const currentUser = (findUserById.get(userId) as UserRow | undefined)

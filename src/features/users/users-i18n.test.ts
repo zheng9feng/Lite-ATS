@@ -37,9 +37,29 @@ const dataTableTranslationKeys = [
   'view',
 ] as const
 
+const permissionsTranslationKeys = [
+  'actions.create',
+  'actions.delete',
+  'actions.save',
+  'api.failed',
+  'createRole.description',
+  'createRole.title',
+  'description',
+  'fields.description',
+  'fields.roleName',
+  'roleEditor.description',
+  'systemRole',
+  'tabs.roles',
+  'tabs.users',
+  'title',
+  'userCount',
+  'userRoles.assignedRoles',
+  'userRoles.effectivePermissions',
+] as const
+
 function getResourceValue(
   locale: keyof typeof resources,
-  namespace: 'dataTable' | 'usersPage',
+  namespace: 'dataTable' | 'permissionsPage' | 'usersPage',
   key: string
 ) {
   return key.split('.').reduce<unknown>((value, part) => {
@@ -63,6 +83,12 @@ describe('users i18n resources', () => {
 
       for (const key of dataTableTranslationKeys) {
         expect(getResourceValue(locale, 'dataTable', key), key).toEqual(
+          expect.any(String)
+        )
+      }
+
+      for (const key of permissionsTranslationKeys) {
+        expect(getResourceValue(locale, 'permissionsPage', key), key).toEqual(
           expect.any(String)
         )
       }

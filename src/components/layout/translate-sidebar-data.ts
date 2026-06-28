@@ -24,6 +24,7 @@ const NAV_TITLE_KEYS: Record<string, string> = {
   OTP: 'navigation.otp',
   Other: 'navigation.groups.other',
   Pages: 'navigation.groups.pages',
+  Permissions: 'navigation.permissions',
   Profile: 'navigation.profile',
   'Resume Preview': 'navigation.resumePreview',
   'Resume Upload': 'navigation.resumeUpload',

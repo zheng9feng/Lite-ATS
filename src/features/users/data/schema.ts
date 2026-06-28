@@ -8,13 +8,7 @@ const userStatusSchema = z.union([
 ])
 export type UserStatus = z.infer<typeof userStatusSchema>
 
-const userRoleSchema = z.union([
-  z.literal('superadmin'),
-  z.literal('admin'),
-  z.literal('normal'),
-  z.literal('cashier'),
-  z.literal('manager'),
-])
+const userRoleSchema = z.string()
 
 const _userSchema = z.object({
   id: z.string(),
@@ -25,6 +19,7 @@ const _userSchema = z.object({
   phoneNumber: z.string(),
   status: userStatusSchema,
   role: userRoleSchema,
+  roleId: z.string().optional(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })

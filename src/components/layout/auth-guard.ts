@@ -1,4 +1,5 @@
 import { type AppPermission, hasEveryPermission } from '@/lib/permissions'
+import { getLoginRedirectTarget } from '@/lib/login-redirect'
 
 type AuthGuardDecision =
   | { type: 'allow' }
@@ -19,7 +20,10 @@ export function getAuthGuardDecision({
   requiredPermissions,
 }: AuthGuardInput): AuthGuardDecision {
   if (!hasSession) {
-    return { redirect: currentHref, type: 'redirect-to-login' }
+    return {
+      redirect: getLoginRedirectTarget(currentHref),
+      type: 'redirect-to-login',
+    }
   }
 
   if (
@@ -43,6 +47,10 @@ export function getRoutePermissions(pathname: string): AppPermission[] {
 
   if (pathname.startsWith('/users')) {
     return ['users:manage']
+  }
+
+  if (pathname.startsWith('/permissions')) {
+    return ['rbac:manage']
   }
 
   return []

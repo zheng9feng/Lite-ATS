@@ -7,6 +7,7 @@ import { Loader2, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
 import { IconFacebook, IconGithub } from '@/assets/brand-icons'
 import { useAuthStore } from '@/stores/auth-store'
+import { getLoginRedirectTarget } from '@/lib/login-redirect'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -63,7 +64,7 @@ export function UserAuthForm({
         auth.setAuthSnapshot(authSnapshot)
 
         // Redirect to the stored location or default to dashboard
-        const targetPath = redirectTo || '/'
+        const targetPath = getLoginRedirectTarget(redirectTo)
         navigate({ to: targetPath, replace: true })
 
         return `Welcome back, ${data.email}!`

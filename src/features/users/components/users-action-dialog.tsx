@@ -1,9 +1,9 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { showSubmittedData } from '@/lib/show-submitted-data'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -24,8 +24,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
 import { SelectDropdown } from '@/components/select-dropdown'
-import { roles } from '../data/data'
 import { type User } from '../data/schema'
+import {
+  createUser,
+  listUserRoleOptions,
+  updateUser,
+  type UserRoleOption,
+} from '../data/users-api'
 
 const formSchema = z
   .object({
@@ -37,7 +42,7 @@ const formSchema = z
       error: (iss) => (iss.input === '' ? 'Email is required.' : undefined),
     }),
     password: z.string().transform((pwd) => pwd.trim()),
-    role: z.string().min(1, 'Role is required.'),
+    roleId: z.string().min(1, 'Role is required.'),
     confirmPassword: z.string().transform((pwd) => pwd.trim()),
     isEdit: z.boolean(),
   })
@@ -95,16 +100,35 @@ type UserForm = z.infer<typeof formSchema>
 
 type UserActionDialogProps = {
   currentRow?: User
+  onSaved?: () => Promise<void> | void
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
+function roleLabel(roleName: string) {
+  return roleName
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function toWritableStatus(
+  status: User['status'] | undefined
+): 'active' | 'inactive' {
+  return status === 'inactive' ? 'inactive' : 'active'
+}
+
 export function UsersActionDialog({
   currentRow,
+  onSaved,
   open,
   onOpenChange,
 }: UserActionDialogProps) {
   const isEdit = !!currentRow
+  const [error, setError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [roleOptions, setRoleOptions] = useState<UserRoleOption[]>([])
   const form = useForm<UserForm>({
     resolver: zodResolver(formSchema),
     defaultValues: isEdit
@@ -112,6 +136,7 @@ export function UsersActionDialog({
           ...currentRow,
           password: '',
           confirmPassword: '',
+          roleId: currentRow.roleId ?? currentRow.role,
           isEdit,
         }
       : {
@@ -119,7 +144,7 @@ export function UsersActionDialog({
           lastName: '',
           username: '',
           email: '',
-          role: '',
+          roleId: '',
           phoneNumber: '',
           password: '',
           confirmPassword: '',
@@ -127,10 +152,101 @@ export function UsersActionDialog({
         },
   })
 
-  const onSubmit = (values: UserForm) => {
-    form.reset()
-    showSubmittedData(values)
-    onOpenChange(false)
+  useEffect(() => {
+    if (!open) return
+
+    let isCurrent = true
+
+    listUserRoleOptions()
+      .then((roles) => {
+        if (isCurrent) {
+          setRoleOptions(roles)
+        }
+      })
+      .catch((reason: unknown) => {
+        if (isCurrent) {
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : 'Failed to load role options.'
+          )
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!currentRow || currentRow.roleId || roleOptions.length === 0) return
+
+    const role = roleOptions.find((option) => option.name === currentRow.role)
+
+    if (role) {
+      form.setValue('roleId', role.id)
+    }
+  }, [currentRow, form, roleOptions])
+
+  const selectRoleOptions = useMemo(() => {
+    const options = [...roleOptions]
+    const currentRoleId = currentRow?.roleId ?? currentRow?.role
+    const currentRoleOption = currentRow?.roleId
+      ? options.find((role) => role.id === currentRow.roleId)
+      : options.find((role) => role.name === currentRow?.role)
+
+    if (
+      currentRow &&
+      currentRoleId &&
+      !currentRoleOption &&
+      !options.some((role) => role.id === currentRoleId)
+    ) {
+      options.push({
+        description: '',
+        id: currentRoleId,
+        name: currentRow.role,
+      })
+    }
+
+    return options.map((role) => ({
+      label: roleLabel(role.name),
+      value: role.id,
+    }))
+  }, [currentRow, roleOptions])
+
+  const onSubmit = async (values: UserForm) => {
+    setError(null)
+    setIsSaving(true)
+
+    try {
+      const roleId =
+        roleOptions.find((role) => role.id === values.roleId)?.id ??
+        roleOptions.find((role) => role.name === values.roleId)?.id ??
+        values.roleId
+      const payload = {
+        email: values.email,
+        name: `${values.firstName} ${values.lastName}`.trim(),
+        password: values.password || undefined,
+        roleId,
+        status: toWritableStatus(currentRow?.status),
+      }
+
+      if (currentRow) {
+        await updateUser(currentRow.id, payload)
+      } else {
+        await createUser(payload)
+      }
+
+      form.reset()
+      await onSaved?.()
+      onOpenChange(false)
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : 'Failed to save user.'
+      )
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const isPasswordTouched = !!form.formState.dirtyFields.password
@@ -140,6 +256,7 @@ export function UsersActionDialog({
       open={open}
       onOpenChange={(state) => {
         form.reset()
+        setError(null)
         onOpenChange(state)
       }}
     >
@@ -255,7 +372,7 @@ export function UsersActionDialog({
               />
               <FormField
                 control={form.control}
-                name='role'
+                name='roleId'
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-end'>Role</FormLabel>
@@ -264,10 +381,7 @@ export function UsersActionDialog({
                       onValueChange={field.onChange}
                       placeholder='Select a role'
                       className='col-span-4'
-                      items={roles.map(({ label, value }) => ({
-                        label,
-                        value,
-                      }))}
+                      items={selectRoleOptions}
                     />
                     <FormMessage className='col-span-4 col-start-3' />
                   </FormItem>
@@ -312,11 +426,16 @@ export function UsersActionDialog({
                   </FormItem>
                 )}
               />
+              {error && (
+                <p className='col-span-4 col-start-3 text-sm text-destructive'>
+                  {error}
+                </p>
+              )}
             </form>
           </Form>
         </div>
         <DialogFooter>
-          <Button type='submit' form='user-form'>
+          <Button type='submit' form='user-form' disabled={isSaving}>
             Save changes
           </Button>
         </DialogFooter>

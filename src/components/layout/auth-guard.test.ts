@@ -30,6 +30,20 @@ describe('auth guard', () => {
     })
   })
 
+  it('does not preserve sign-in as the post-login redirect target', () => {
+    const decision = getAuthGuardDecision({
+      currentHref: '/sign-in?redirect=%2Fsign-in%3Fredirect%3D%252F',
+      hasSession: false,
+      permissions: [],
+      requiredPermissions: [],
+    })
+
+    expect(decision).toEqual({
+      type: 'redirect-to-login',
+      redirect: '/',
+    })
+  })
+
   it('forbids signed-in users missing required permissions', () => {
     const decision = getAuthGuardDecision({
       currentHref: '/users',
@@ -39,5 +53,17 @@ describe('auth guard', () => {
     })
 
     expect(decision).toEqual({ type: 'forbidden' })
+  })
+
+  it('requires RBAC management access for the permissions module', () => {
+    expect(getRoutePermissions('/permissions')).toEqual(['rbac:manage'])
+    expect(
+      getAuthGuardDecision({
+        currentHref: '/permissions',
+        hasSession: true,
+        permissions: ['users:manage'],
+        requiredPermissions: getRoutePermissions('/permissions'),
+      })
+    ).toEqual({ type: 'forbidden' })
   })
 })

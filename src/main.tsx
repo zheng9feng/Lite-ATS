@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { getLoginRedirectTarget } from '@/lib/login-redirect'
 import { useAuthStore } from '@/stores/auth-store'
 import { handleServerError } from '@/lib/handle-server-error'
 import { i18n } from '@/lib/i18n'
@@ -56,7 +57,7 @@ const queryClient = new QueryClient({
         if (error.response?.status === 401) {
           toast.error(i18n.t('errors.sessionExpired'))
           useAuthStore.getState().auth.reset()
-          const redirect = `${router.history.location.href}`
+          const redirect = getLoginRedirectTarget(router.history.location.href)
           router.navigate({ to: '/sign-in', search: { redirect } })
         }
         if (error.response?.status === 500) {
