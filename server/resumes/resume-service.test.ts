@@ -320,6 +320,102 @@ describe('createResumeService', () => {
     )
   })
 
+  it('summarizes stored resume metadata for the dashboard', async () => {
+    createId
+      .mockReturnValueOnce('resume-1')
+      .mockReturnValueOnce('resume-2')
+      .mockReturnValueOnce('resume-3')
+      .mockReturnValueOnce('resume-4')
+      .mockReturnValueOnce('resume-5')
+      .mockReturnValueOnce('resume-6')
+    getNow
+      .mockReturnValueOnce(new Date('2026-04-10T08:00:00.000Z'))
+      .mockReturnValueOnce(new Date('2026-05-12T08:00:00.000Z'))
+      .mockReturnValueOnce(new Date('2026-05-13T08:00:00.000Z'))
+      .mockReturnValueOnce(new Date('2026-06-01T08:00:00.000Z'))
+      .mockReturnValueOnce(new Date('2026-06-02T08:00:00.000Z'))
+      .mockReturnValueOnce(new Date('2026-06-03T08:00:00.000Z'))
+
+    const service = createResumeService({
+      bucketName: 'resumes',
+      createId,
+      createToken,
+      getNow,
+      publicApiUrl: 'http://localhost:3001',
+      repository: createMemoryResumeRepository(),
+      storage,
+    })
+
+    for (const [index, positionApplied] of [
+      'Designer',
+      'Frontend Engineer',
+      'Frontend Engineer',
+      'Backend Engineer',
+      'Frontend Engineer',
+      'Backend Engineer',
+    ].entries()) {
+      await service.addResume({
+        applicant: {
+          email: `candidate${index + 1}@example.com`,
+          name: `Candidate ${index + 1}`,
+          positionApplied,
+        },
+        file: {
+          buffer: Buffer.from('pdf'),
+          mimetype: 'application/pdf',
+          originalname: `candidate-${index + 1}.pdf`,
+          size: 1000 * (index + 1),
+        },
+      })
+    }
+
+    expect(service.getResumeSummary()).toEqual({
+      latestUploadAt: '2026-06-03T08:00:00.000Z',
+      recentResumes: [
+        expect.objectContaining({ id: 'resume-6' }),
+        expect.objectContaining({ id: 'resume-5' }),
+        expect.objectContaining({ id: 'resume-4' }),
+        expect.objectContaining({ id: 'resume-3' }),
+        expect.objectContaining({ id: 'resume-2' }),
+      ],
+      topPositions: [
+        { count: 3, position: 'Frontend Engineer' },
+        { count: 2, position: 'Backend Engineer' },
+        { count: 1, position: 'Designer' },
+      ],
+      totalFileSize: 21000,
+      totalResumes: 6,
+      uniquePositionCount: 3,
+      uploadsByMonth: [
+        { count: 1, month: '2026-04' },
+        { count: 2, month: '2026-05' },
+        { count: 3, month: '2026-06' },
+      ],
+    })
+  })
+
+  it('returns an empty dashboard summary when no resumes are stored', () => {
+    const service = createResumeService({
+      bucketName: 'resumes',
+      createId,
+      createToken,
+      getNow,
+      publicApiUrl: 'http://localhost:3001',
+      repository: createMemoryResumeRepository(),
+      storage,
+    })
+
+    expect(service.getResumeSummary()).toEqual({
+      latestUploadAt: null,
+      recentResumes: [],
+      topPositions: [],
+      totalFileSize: 0,
+      totalResumes: 0,
+      uniquePositionCount: 0,
+      uploadsByMonth: [],
+    })
+  })
+
   it('persists resume metadata and share links across service instances', async () => {
     const tempDir = await mkdtemp(join(tmpdir(), 'lite-ats-resume-service-'))
     const databasePath = join(tempDir, 'resumes.sqlite')
