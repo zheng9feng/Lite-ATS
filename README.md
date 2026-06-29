@@ -1,119 +1,184 @@
-# Shadcn Admin Dashboard
+# Lite ATS
 
-Admin Dashboard UI crafted with Shadcn and Vite. Built with responsiveness and accessibility in mind.
+Lite ATS is a Vite, React, and TypeScript admin dashboard for local applicant
+tracking workflows. It extends the shadcn-admin dashboard with local
+email/password authentication, SQLite-backed RBAC, resume upload and preview,
+and MinIO-backed PDF storage with expiring public share links.
 
-![alt text](public/images/shadcn-admin.png)
-
-[![Sponsored by Clerk](https://img.shields.io/badge/Sponsored%20by-Clerk-5b6ee1?logo=clerk)](https://go.clerk.com/GttUAaK)
-
-I've been creating dashboard UIs at work and for my personal projects. I always wanted to make a reusable collection of dashboard UI for future projects; and here it is now. While I've created a few custom components, some of the code is directly adapted from ShadcnUI examples.
-
-> This is not a starter project (template) though. I'll probably make one in the future.
+![Lite ATS dashboard](public/images/shadcn-admin.png)
 
 ## Features
 
-- Light/dark mode
-- Responsive
-- Accessible
-- With built-in Sidebar component
-- Global search command
-- 10+ pages
-- Extra custom components
-- RTL support
-
-<details>
-<summary>Customized Components (click to expand)</summary>
-
-This project uses Shadcn UI components, but some have been slightly modified for better RTL (Right-to-Left) support and other improvements. These customized components differ from the original Shadcn UI versions.
-
-If you want to update components using the Shadcn CLI (e.g., `npx shadcn@latest add <component>`), it's generally safe for non-customized components. For the listed customized ones, you may need to manually merge changes to preserve the project's modifications and avoid overwriting RTL support or other updates.
-
-> If you don't require RTL support, you can safely update the 'RTL Updated Components' via the Shadcn CLI, as these changes are primarily for RTL compatibility. The 'Modified Components' may have other customizations to consider.
-
-### Modified Components
-
-- scroll-area
-- sonner
-- separator
-
-### RTL Updated Components
-
-- alert-dialog
-- calendar
-- command
-- dialog
-- dropdown-menu
-- select
-- table
-- sheet
-- sidebar
-- switch
-
-**Notes:**
-
-- **Modified Components**: These have general updates, potentially including RTL adjustments.
-- **RTL Updated Components**: These have specific changes for RTL language support (e.g., layout, positioning).
-- For implementation details, check the source files in `src/components/ui/`.
-- All other Shadcn UI components in the project are standard and can be safely updated via the CLI.
-
-</details>
+- Resume upload, metadata editing, preview, deletion, and expiring share links.
+- Local Express API with SQLite persistence for resumes, users, roles,
+  permissions, and sessions.
+- MinIO object storage for uploaded PDF files.
+- Local email/password authentication with bearer-session API authorization.
+- RBAC-protected navigation for resume, user, and permission management.
+- Dashboard, users table, permissions management, settings, auth, and error
+  pages.
+- Responsive shadcn/ui interface with light/dark mode, RTL-capable primitives,
+  and English / Simplified Chinese localization.
 
 ## Tech Stack
 
-**UI:** [ShadcnUI](https://ui.shadcn.com) (TailwindCSS + RadixUI)
+- React 19, TypeScript, Vite, and TanStack Router.
+- shadcn/ui, Radix UI, Tailwind CSS, Lucide icons, and Recharts.
+- Zustand for client auth/session state.
+- Express 5 API with multer uploads.
+- SQLite through better-sqlite3 and Kysely migrations.
+- MinIO for local resume object storage.
+- Vitest with Playwright browser mode for frontend tests.
+- Vitest Node mode for server tests.
 
-**Build Tool:** [Vite](https://vitejs.dev/)
+## Project Structure
 
-**Routing:** [TanStack Router](https://tanstack.com/router/latest)
+```text
+src/
+  components/       shared UI, layout, tables, and app chrome
+  context/          theme, layout, language, search, and direction providers
+  features/         auth, dashboard, permissions, resumes, settings, users
+  hooks/            shared React hooks
+  lib/              utilities, i18n, permissions, cookies, error handling
+  routes/           TanStack file-based routes
+  stores/           Zustand stores
+  styles/           global CSS and theme tokens
 
-**Type Checking:** [TypeScript](https://www.typescriptlang.org/)
-
-**Linting/Formatting:** [ESLint](https://eslint.org/) & [Prettier](https://prettier.io/)
-
-**Icons:** [Lucide Icons](https://lucide.dev/icons/), [Tabler Icons](https://tabler.io/icons) (Brand icons only)
-
-**Auth (partial):** [Clerk](https://go.clerk.com/GttUAaK)
-
-## Run Locally
-
-Clone the project
-
-```bash
-  git clone https://github.com/satnaing/shadcn-admin.git
+server/
+  app.ts            Express app and API routes
+  index.ts          API bootstrap, migrations, local admin seed
+  auth/             local auth, password hashing, sessions, RBAC repository
+  resumes/          MinIO storage, resume service, SQLite migrations
 ```
 
-Go to the project directory
+## Getting Started
+
+Install dependencies:
 
 ```bash
-  cd shadcn-admin
+pnpm install
 ```
 
-Install dependencies
+Create a local environment file:
 
 ```bash
-  pnpm install
+cp .env.example .env
 ```
 
-Start the server
+Start MinIO locally. One simple option is Docker:
 
 ```bash
-  pnpm run dev
+docker run --rm \
+  -p 9000:9000 \
+  -p 9001:9001 \
+  -e MINIO_ROOT_USER=minioadmin \
+  -e MINIO_ROOT_PASSWORD=minioadmin \
+  quay.io/minio/minio server /data --console-address ":9001"
 ```
 
-## Sponsoring this project ❤️
+Start the API:
 
-If you find this project helpful or use this in your own work, consider [sponsoring me](https://github.com/sponsors/satnaing) to support development and maintenance. You can [buy me a coffee](https://buymeacoffee.com/satnaing) as well. Don’t worry, every penny helps. Thank you! 🙏
+```bash
+pnpm run dev:api
+```
 
-For questions or sponsorship inquiries, feel free to reach out at [satnaingdev@gmail.com](mailto:satnaingdev@gmail.com).
+Start the frontend in another terminal:
 
-### Current Sponsor
+```bash
+pnpm run dev
+```
 
-- [Clerk](https://go.clerk.com/GttUAaK) - authentication and user management for the modern web
+Open the Vite URL, usually `http://localhost:5173`. The Vite dev server proxies
+`/api` requests to `http://localhost:3001`, so `VITE_RESUME_API_BASE_URL` can
+stay empty for normal local development.
 
-## Author
+With the default `.env.example` values, the API creates a local admin user on
+first startup:
 
-Crafted with 🤍 by [@satnaing](https://github.com/satnaing)
+```text
+Email: admin@example.com
+Password: password123
+```
+
+Change those credentials before sharing a local database or deploying the API.
+
+## Environment Variables
+
+| Variable                     | Default                       | Purpose                                                             |
+| ---------------------------- | ----------------------------- | ------------------------------------------------------------------- |
+| `VITE_RESUME_API_BASE_URL`   | empty                         | Optional browser API origin. Leave empty when using the Vite proxy. |
+| `VITE_CLERK_PUBLISHABLE_KEY` | empty                         | Optional Clerk publishable key for the separate Clerk demo routes.  |
+| `RESUME_API_PORT`            | `3001`                        | Express API port.                                                   |
+| `RESUME_API_PUBLIC_URL`      | `http://localhost:3001`       | Public URL used when generating resume preview and share links.     |
+| `RESUME_DATABASE_PATH`       | `server/.data/resumes.sqlite` | SQLite database path.                                               |
+| `RESUME_SHARE_TTL_MINUTES`   | `60`                          | Lifetime for public resume share links.                             |
+| `LOCAL_ADMIN_EMAIL`          | empty                         | Admin seed email. No admin is seeded when empty.                    |
+| `LOCAL_ADMIN_NAME`           | `Local Admin`                 | Admin seed display name.                                            |
+| `LOCAL_ADMIN_PASSWORD`       | empty                         | Admin seed password. No admin is seeded when empty.                 |
+| `MINIO_ENDPOINT`             | `localhost`                   | MinIO endpoint hostname.                                            |
+| `MINIO_PORT`                 | `9000`                        | MinIO API port.                                                     |
+| `MINIO_USE_SSL`              | `false`                       | Whether the MinIO client uses SSL.                                  |
+| `MINIO_ACCESS_KEY`           | `minioadmin`                  | MinIO access key.                                                   |
+| `MINIO_SECRET_KEY`           | `minioadmin`                  | MinIO secret key.                                                   |
+| `MINIO_ROOT_USER`            | unset                         | Alternative MinIO root username if API-specific keys are absent.    |
+| `MINIO_ROOT_PASSWORD`        | unset                         | Alternative MinIO root password if API-specific keys are absent.    |
+| `MINIO_BUCKET`               | `resumes`                     | Bucket used for uploaded resume PDFs.                               |
+
+## API Overview
+
+The local API is mounted under `/api`.
+
+- `GET /api/health` checks API health.
+- `POST /api/auth/login`, `POST /api/auth/logout`, and `GET /api/auth/me`
+  manage local sessions.
+- `GET /api/resumes`, `POST /api/resumes`, `PATCH /api/resumes/:id`,
+  `DELETE /api/resumes/:id`, `GET /api/resumes/:id/file`, and
+  `POST /api/resumes/:id/share` manage protected resume workflows.
+- `GET /api/resume-shares/:token` streams a shared PDF without requiring auth
+  until the token expires.
+- `GET /api/users`, `POST /api/users`, `PATCH /api/users/:id`,
+  `DELETE /api/users/:id`, and `PUT /api/users/:id/roles` manage local users.
+- `GET /api/roles`, `POST /api/roles`, `PATCH /api/roles/:id`,
+  `DELETE /api/roles/:id`, `PUT /api/roles/:id/permissions`, and
+  `GET /api/permissions` manage RBAC.
+
+Protected API routes require an `Authorization: Bearer <sessionToken>` header.
+System roles are seeded by migration: `admin` has all permissions, and
+`normal` has read-only resume access.
+
+## Scripts
+
+```bash
+pnpm run dev              # Start the Vite dev server
+pnpm run dev:api          # Start the local Express API
+pnpm run build            # Type-check and build the frontend
+pnpm run preview          # Serve the production build locally
+pnpm run lint             # Run ESLint
+pnpm run format:check     # Check Prettier formatting
+pnpm run format           # Format files with Prettier
+pnpm run test             # Run frontend Vitest browser tests headlessly
+pnpm run test:server      # Run server tests in Node mode
+pnpm run test:coverage    # Run frontend tests with V8 coverage
+pnpm run knip             # Report unused files, exports, and dependencies
+```
+
+If browser tests fail because Chromium is missing, install the browser runtime:
+
+```bash
+pnpm run test:browser:install
+```
+
+## Notes
+
+- Uploaded resume files must be PDFs and are limited to 10 MB.
+- API migrations run automatically when `pnpm run dev:api` starts.
+- SQLite data defaults to `server/.data/resumes.sqlite`; remove or change that
+  file when you need a clean local database.
+- Do not commit `.env`, local databases, MinIO data, or other secrets.
 
 ## License
 
-Licensed under the [MIT License](https://choosealicense.com/licenses/mit/)
+Licensed under the [MIT License](LICENSE).
+
+This project is based on the shadcn-admin dashboard by Sat Naing and retains
+the upstream MIT license.
