@@ -6,166 +6,108 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { type ResumeDashboardSummary } from '../data/dashboard-api'
 import { AnalyticsChart } from './analytics-chart'
 
-export function Analytics() {
+type AnalyticsProps = {
+  summary: ResumeDashboardSummary
+  totalFileSize: string
+}
+
+export function Analytics({ summary, totalFileSize }: AnalyticsProps) {
   const { t } = useTranslation()
 
   return (
     <div className='space-y-4'>
       <Card>
         <CardHeader>
-          <CardTitle>{t('dashboard.analytics.title')}</CardTitle>
+          <CardTitle>{t('dashboard.analytics.monthlyUploads')}</CardTitle>
           <CardDescription>
-            {t('dashboard.analytics.trafficDescription')}
+            {t('dashboard.analytics.monthlyUploadsDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className='px-6'>
-          <AnalyticsChart />
+          <AnalyticsChart uploadsByMonth={summary.uploadsByMonth} />
         </CardContent>
       </Card>
-      <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+      <div className='grid gap-4 md:grid-cols-3'>
         <Card>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>
-              {t('dashboard.analytics.totalClicks')}
-            </CardTitle>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              strokeWidth='2'
-              className='h-4 w-4 text-muted-foreground'
-            >
-              <path d='M3 3v18h18' />
-              <path d='M7 15l4-4 4 4 4-6' />
-            </svg>
+          <CardHeader>
+            <CardTitle>{t('dashboard.analytics.totalStorage')}</CardTitle>
+            <CardDescription>
+              {t('dashboard.analytics.totalStorageDescription')}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className='text-2xl font-bold'>1,248</div>
-            <p className='text-xs text-muted-foreground'>
-              {t('dashboard.analytics.vsLastWeek', { value: '+12.4%' })}
-            </p>
+            <div className='text-2xl font-bold'>{totalFileSize}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>
-              {t('dashboard.analytics.uniqueVisitors')}
-            </CardTitle>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              strokeWidth='2'
-              className='h-4 w-4 text-muted-foreground'
-            >
-              <circle cx='12' cy='7' r='4' />
-              <path d='M6 21v-2a6 6 0 0 1 12 0v2' />
-            </svg>
+          <CardHeader>
+            <CardTitle>{t('dashboard.analytics.averageFileSize')}</CardTitle>
+            <CardDescription>
+              {t('dashboard.analytics.averageFileSizeDescription')}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className='text-2xl font-bold'>832</div>
-            <p className='text-xs text-muted-foreground'>
-              {t('dashboard.analytics.vsLastWeek', { value: '+5.8%' })}
-            </p>
+            <div className='text-2xl font-bold'>
+              {summary.totalResumes === 0
+                ? '0 B'
+                : totalFileSizeForAverage(
+                    summary.totalFileSize,
+                    summary.totalResumes
+                  )}
+            </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>
-              {t('dashboard.analytics.bounceRate')}
-            </CardTitle>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              strokeWidth='2'
-              className='h-4 w-4 text-muted-foreground'
-            >
-              <path d='M3 12h6l3 6 3-6h6' />
-            </svg>
+          <CardHeader>
+            <CardTitle>{t('dashboard.analytics.trackedPositions')}</CardTitle>
+            <CardDescription>
+              {t('dashboard.analytics.trackedPositionsDescription')}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className='text-2xl font-bold'>42%</div>
-            <p className='text-xs text-muted-foreground'>
-              {t('dashboard.analytics.vsLastWeek', { value: '-3.2%' })}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>
-              {t('dashboard.analytics.avgSession')}
-            </CardTitle>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              strokeWidth='2'
-              className='h-4 w-4 text-muted-foreground'
-            >
-              <circle cx='12' cy='12' r='10' />
-              <path d='M12 6v6l4 2' />
-            </svg>
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>3m 24s</div>
-            <p className='text-xs text-muted-foreground'>
-              {t('dashboard.analytics.vsLastWeek', { value: '+18s' })}
-            </p>
+            <div className='text-2xl font-bold'>
+              {summary.uniquePositionCount}
+            </div>
           </CardContent>
         </Card>
       </div>
       <div className='grid grid-cols-1 gap-4 lg:grid-cols-7'>
         <Card className='col-span-1 lg:col-span-4'>
           <CardHeader>
-            <CardTitle>{t('dashboard.analytics.referrers')}</CardTitle>
+            <CardTitle>{t('dashboard.analytics.topPositions')}</CardTitle>
             <CardDescription>
-              {t('dashboard.analytics.referrersDescription')}
+              {t('dashboard.analytics.topPositionsDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <SimpleBarList
-              items={[
-                { name: t('dashboard.analytics.direct'), value: 512 },
-                { name: 'Product Hunt', value: 238 },
-                { name: 'Twitter', value: 174 },
-                { name: t('dashboard.analytics.blog'), value: 104 },
-              ]}
+              items={summary.topPositions}
+              labelKey='position'
               barClass='bg-primary'
-              valueFormatter={(n) => `${n}`}
+              valueFormatter={(count) =>
+                t('dashboard.analytics.resumeCount', { count })
+              }
             />
           </CardContent>
         </Card>
         <Card className='col-span-1 lg:col-span-3'>
           <CardHeader>
-            <CardTitle>{t('dashboard.analytics.devices')}</CardTitle>
+            <CardTitle>{t('dashboard.analytics.monthlyUploads')}</CardTitle>
             <CardDescription>
-              {t('dashboard.analytics.devicesDescription')}
+              {t('dashboard.analytics.monthlyUploadsListDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <SimpleBarList
-              items={[
-                { name: t('dashboard.analytics.desktop'), value: 74 },
-                { name: t('dashboard.analytics.mobile'), value: 22 },
-                { name: t('dashboard.analytics.tablet'), value: 4 },
-              ]}
+              items={summary.uploadsByMonth}
+              labelKey='month'
               barClass='bg-muted-foreground'
-              valueFormatter={(n) => `${n}%`}
+              valueFormatter={(count) =>
+                t('dashboard.analytics.resumeCount', { count })
+              }
             />
           </CardContent>
         </Card>
@@ -174,25 +116,44 @@ export function Analytics() {
   )
 }
 
-function SimpleBarList({
+function totalFileSizeForAverage(totalFileSize: number, totalResumes: number) {
+  const average = totalFileSize / totalResumes
+  if (average === 0) return '0 B'
+
+  const units = ['B', 'KB', 'MB', 'GB']
+  const unitIndex = Math.min(
+    Math.floor(Math.log(average) / Math.log(1024)),
+    units.length - 1
+  )
+  const value = average / 1024 ** unitIndex
+
+  return `${new Intl.NumberFormat('en', {
+    maximumFractionDigits: value >= 10 ? 0 : 1,
+  }).format(value)} ${units[unitIndex]}`
+}
+
+function SimpleBarList<T extends { count: number }>({
   items,
   valueFormatter,
   barClass,
+  labelKey,
 }: {
-  items: { name: string; value: number }[]
-  valueFormatter: (n: number) => string
+  items: T[]
+  valueFormatter: (count: number) => string
   barClass: string
+  labelKey: keyof T
 }) {
-  const max = Math.max(...items.map((i) => i.value), 1)
+  const max = Math.max(...items.map((item) => item.count), 1)
   return (
     <ul className='space-y-3'>
-      {items.map((i) => {
-        const width = `${Math.round((i.value / max) * 100)}%`
+      {items.map((item) => {
+        const width = `${Math.round((item.count / max) * 100)}%`
+        const label = String(item[labelKey])
         return (
-          <li key={i.name} className='flex items-center justify-between gap-3'>
+          <li key={label} className='flex items-center justify-between gap-3'>
             <div className='min-w-0 flex-1'>
               <div className='mb-1 truncate text-xs text-muted-foreground'>
-                {i.name}
+                {label}
               </div>
               <div className='h-2.5 w-full rounded-full bg-muted'>
                 <div
@@ -202,7 +163,7 @@ function SimpleBarList({
               </div>
             </div>
             <div className='ps-2 text-xs font-medium tabular-nums'>
-              {valueFormatter(i.value)}
+              {valueFormatter(item.count)}
             </div>
           </li>
         )

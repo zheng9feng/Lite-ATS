@@ -26,6 +26,16 @@ export type ResumeShareLink = {
   token: string
 }
 
+export type ResumeSummary = {
+  latestUploadAt: string | null
+  recentResumes: StoredResume[]
+  topPositions: { count: number; position: string }[]
+  totalFileSize: number
+  totalResumes: number
+  uniquePositionCount: number
+  uploadsByMonth: { count: number; month: string }[]
+}
+
 export type UploadedResumeFile = {
   buffer: Buffer
   mimetype: string
@@ -218,6 +228,52 @@ export function createResumeService({
     return repository.listResumes().map((resume) => toPublicResume(resume))
   }
 
+  function getResumeSummary(): ResumeSummary {
+    const resumes = repository.listResumes()
+    const months = new Map<string, number>()
+    const positions = new Map<string, number>()
+    let latestUploadAt: string | null = null
+    let totalFileSize = 0
+
+    for (const resume of resumes) {
+      totalFileSize += resume.fileSize
+      if (!latestUploadAt || resume.uploadedAt > latestUploadAt) {
+        latestUploadAt = resume.uploadedAt
+      }
+
+      const month = resume.uploadedAt.slice(0, 7)
+      months.set(month, (months.get(month) ?? 0) + 1)
+
+      const position = resume.applicant.positionApplied.trim()
+      if (position) {
+        positions.set(position, (positions.get(position) ?? 0) + 1)
+      }
+    }
+
+    return {
+      latestUploadAt,
+      recentResumes: resumes
+        .toSorted((first, second) =>
+          second.uploadedAt.localeCompare(first.uploadedAt)
+        )
+        .slice(0, 5)
+        .map((resume) => toPublicResume(resume)),
+      topPositions: [...positions.entries()]
+        .map(([position, count]) => ({ count, position }))
+        .toSorted(
+          (first, second) =>
+            second.count - first.count ||
+            first.position.localeCompare(second.position)
+        ),
+      totalFileSize,
+      totalResumes: resumes.length,
+      uniquePositionCount: positions.size,
+      uploadsByMonth: [...months.entries()]
+        .map(([month, count]) => ({ count, month }))
+        .toSorted((first, second) => first.month.localeCompare(second.month)),
+    }
+  }
+
   async function getResumeFile(resumeId: string) {
     const resume = getResume(resumeId)
     const stream = await storage.getObject({
@@ -292,6 +348,7 @@ export function createResumeService({
     addResume,
     createShareLink,
     deleteResume,
+    getResumeSummary,
     getResumeFile,
     getSharedResume,
     getSharedResumeFile,

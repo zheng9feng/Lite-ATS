@@ -311,6 +311,18 @@ export function createServerApp({
     }
   )
 
+  app.get(
+    '/api/resumes/summary',
+    requirePermission('resumes:read'),
+    (_request, response) => {
+      try {
+        response.json(resumeService.getResumeSummary())
+      } catch (error) {
+        sendError(response, error)
+      }
+    }
+  )
+
   app.post(
     '/api/resumes',
     requirePermission('resumes:create'),

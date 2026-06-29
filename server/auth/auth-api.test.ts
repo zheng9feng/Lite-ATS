@@ -212,6 +212,33 @@ describe('auth API integration', () => {
     expect(response.status).toBe(403)
   })
 
+  it('requires resume read access for the resume summary endpoint', async () => {
+    const unauthenticatedResponse = await api.request('/api/resumes/summary')
+
+    expect(unauthenticatedResponse.status).toBe(401)
+
+    await api.request('/api/auth/login', {
+      body: JSON.stringify({
+        email: 'normal@example.com',
+        password: 'password123',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+
+    const response = await api.request('/api/resumes/summary', {
+      headers: {
+        Authorization: 'Bearer session-token',
+      },
+    })
+    const body = (await response.json()) as { totalResumes: number }
+
+    expect(response.status).toBe(200)
+    expect(body.totalResumes).toBe(0)
+  })
+
   it('requires RBAC access for role management endpoints', async () => {
     await api.request('/api/auth/login', {
       body: JSON.stringify({

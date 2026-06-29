@@ -1,92 +1,30 @@
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 
-const overviewValues = [
-  {
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-]
+type OverviewProps = {
+  uploadsByMonth: { count: number; month: string }[]
+}
 
-const monthKeys = [
-  'dashboard.months.jan',
-  'dashboard.months.feb',
-  'dashboard.months.mar',
-  'dashboard.months.apr',
-  'dashboard.months.may',
-  'dashboard.months.jun',
-  'dashboard.months.jul',
-  'dashboard.months.aug',
-  'dashboard.months.sep',
-  'dashboard.months.oct',
-  'dashboard.months.nov',
-  'dashboard.months.dec',
-]
-
-export function Overview() {
-  const { t } = useTranslation()
-  const data = useMemo(
-    () =>
-      overviewValues.map((value, index) => ({
-        ...value,
-        name: t(monthKeys[index]),
-      })),
-    [t]
-  )
-
+export function Overview({ uploadsByMonth }: OverviewProps) {
   return (
     <ResponsiveContainer width='100%' height={350}>
-      <BarChart data={data}>
+      <BarChart data={uploadsByMonth}>
         <XAxis
-          dataKey='name'
+          dataKey='month'
           stroke='#888888'
           fontSize={12}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
+          allowDecimals={false}
           direction='ltr'
           stroke='#888888'
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `$${value}`}
         />
         <Bar
-          dataKey='total'
+          dataKey='count'
           fill='currentColor'
           radius={[4, 4, 0, 0]}
           className='fill-primary'
