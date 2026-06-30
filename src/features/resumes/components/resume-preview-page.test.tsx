@@ -12,6 +12,7 @@ import { ResumePreviewPage } from './resume-preview-page'
 
 const createResumeShareLink = vi.fn()
 const deleteResume = vi.fn()
+const fetchResumeFile = vi.fn()
 const listActiveJobPositions = vi.fn()
 const listResumes = vi.fn()
 const updateResume = vi.fn()
@@ -35,6 +36,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 vi.mock('../data/resume-api', () => ({
   createResumeShareLink: (...args: unknown[]) => createResumeShareLink(...args),
   deleteResume: (...args: unknown[]) => deleteResume(...args),
+  fetchResumeFile: (...args: unknown[]) => fetchResumeFile(...args),
   listResumes: (...args: unknown[]) => listResumes(...args),
   updateResume: (...args: unknown[]) => updateResume(...args),
 }))
@@ -97,11 +99,21 @@ function createStoredResume(index: number) {
 }
 
 describe('ResumePreviewPage', () => {
+  const createObjectURL = vi.fn()
   const open = vi.fn()
+  const revokeObjectURL = vi.fn()
   const writeText = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: createObjectURL,
+    })
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: revokeObjectURL,
+    })
     Object.defineProperty(window, 'open', {
       configurable: true,
       value: open,
@@ -117,6 +129,10 @@ describe('ResumePreviewPage', () => {
       shareUrl: 'http://localhost:3001/api/resume-shares/share-token',
       token: 'share-token',
     })
+    createObjectURL.mockReturnValue('blob:http://localhost/resume-1')
+    fetchResumeFile.mockResolvedValue(
+      new Blob(['pdf'], { type: 'application/pdf' })
+    )
     listActiveJobPositions.mockResolvedValue([
       {
         createdAt: '2026-06-25T08:00:00.000Z',
@@ -253,7 +269,7 @@ describe('ResumePreviewPage', () => {
       .toBeEnabled()
   })
 
-  it('opens the selected resume in a new browser tab', async () => {
+  it('opens the selected resume PDF from an authenticated blob URL', async () => {
     useResumeStore.setState({
       resumes: [createStoredResume(1)],
     })
@@ -264,8 +280,14 @@ describe('ResumePreviewPage', () => {
       getByRole('button', { name: /预览 Candidate 1 的简历/i })
     )
 
+    await vi.waitFor(() =>
+      expect(fetchResumeFile).toHaveBeenCalledWith(
+        'http://localhost:3001/api/resumes/resume-1/file'
+      )
+    )
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
     expect(open).toHaveBeenCalledWith(
-      'http://localhost:3001/api/resumes/resume-1/file',
+      'blob:http://localhost/resume-1',
       '_blank',
       'noopener,noreferrer'
     )

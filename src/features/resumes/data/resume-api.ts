@@ -85,6 +85,18 @@ export async function listResumes(): Promise<ResumeFile[]> {
   return parseApiResponse<ResumeFile[]>(response)
 }
 
+export async function fetchResumeFile(previewUrl: string): Promise<Blob> {
+  const response = await fetch(previewUrl, {
+    headers: authHeaders(),
+  })
+
+  if (response.ok) {
+    return response.blob()
+  }
+
+  return await parseApiResponse<never>(response)
+}
+
 export async function updateResume({
   applicant,
   file,

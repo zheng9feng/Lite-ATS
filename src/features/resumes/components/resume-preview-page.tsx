@@ -78,6 +78,7 @@ import {
 import {
   createResumeShareLink,
   deleteResume as deleteResumeRequest,
+  fetchResumeFile,
   listResumes,
   updateResume as updateResumeRequest,
 } from '../data/resume-api'
@@ -134,8 +135,11 @@ function formatUploadedAt(value: string, locale: string) {
   }).format(new Date(value))
 }
 
-function openResumePreview(resume: ResumeFile) {
-  window.open(resume.previewUrl, '_blank', 'noopener,noreferrer')
+async function openResumePreview(resume: ResumeFile) {
+  const file = await fetchResumeFile(resume.previewUrl)
+  const previewUrl = URL.createObjectURL(file)
+
+  window.open(previewUrl, '_blank', 'noopener,noreferrer')
 }
 
 function isPdf(file?: File) {
@@ -635,7 +639,15 @@ export function ResumePreviewPage() {
               size='sm'
               type='button'
               variant='outline'
-              onClick={() => openResumePreview(row.original)}
+              onClick={() => {
+                void openResumePreview(row.original).catch((error) => {
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : t('resumes.preview.errors.load')
+                  )
+                })
+              }}
             >
               <ExternalLink />
               {t('resumes.preview.actions.preview')}

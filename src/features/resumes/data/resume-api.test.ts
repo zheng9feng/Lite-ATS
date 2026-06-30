@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import {
   createResumeShareLink,
   deleteResume,
+  fetchResumeFile,
   listResumes,
   updateResume,
   uploadResume,
@@ -114,6 +115,28 @@ describe('resume API client', () => {
     })
     expect(resumes).toHaveLength(1)
     expect(resumes[0]?.id).toBe('resume-1')
+  })
+
+  it('fetches a resume PDF with the current bearer token', async () => {
+    const pdf = new Blob(['pdf'], { type: 'application/pdf' })
+    fetch.mockResolvedValue({
+      blob: async () => pdf,
+      ok: true,
+    })
+
+    const result = await fetchResumeFile(
+      'http://localhost:3001/api/resumes/resume-1/file'
+    )
+
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3001/api/resumes/resume-1/file',
+      {
+        headers: {
+          Authorization: 'Bearer session-token',
+        },
+      }
+    )
+    expect(result).toBe(pdf)
   })
 
   it('updates resume metadata and optionally sends a replacement PDF', async () => {
