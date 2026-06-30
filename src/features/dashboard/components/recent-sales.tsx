@@ -19,7 +19,9 @@ export function RecentSales({ resumes }: RecentSalesProps) {
       {resumes.map((resume) => (
         <div key={resume.id} className='flex items-center gap-4'>
           <Avatar className='h-9 w-9'>
-            <AvatarFallback>{getInitials(resume.applicant.name)}</AvatarFallback>
+            <AvatarFallback>
+              {getInitials(resume.applicant.name)}
+            </AvatarFallback>
           </Avatar>
           <div className='min-w-0 flex-1'>
             <p className='truncate text-sm leading-none font-medium'>

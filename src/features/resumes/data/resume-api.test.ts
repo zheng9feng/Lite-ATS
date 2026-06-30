@@ -44,7 +44,10 @@ describe('resume API client', () => {
         positionApplied: 'Frontend Engineer',
       },
       file,
+      jobPositionId: 'job-frontend',
     })
+
+    const body = fetch.mock.calls[0]?.[1]?.body as FormData
 
     expect(fetch).toHaveBeenCalledWith('/api/resumes', {
       body: expect.any(FormData),
@@ -53,6 +56,7 @@ describe('resume API client', () => {
       },
       method: 'POST',
     })
+    expect(body.get('jobPositionId')).toBe('job-frontend')
     expect(resume.previewUrl).toBe(
       'http://localhost:3001/api/resumes/resume-1/file'
     )
@@ -140,8 +144,11 @@ describe('resume API client', () => {
         positionApplied: 'Product Engineer',
       },
       file,
+      jobPositionId: 'job-product',
       resumeId: 'resume-1',
     })
+
+    const body = fetch.mock.calls[0]?.[1]?.body as FormData
 
     expect(fetch).toHaveBeenCalledWith('/api/resumes/resume-1', {
       body: expect.any(FormData),
@@ -150,6 +157,7 @@ describe('resume API client', () => {
       },
       method: 'PATCH',
     })
+    expect(body.get('jobPositionId')).toBe('job-product')
     expect(resume.applicant.email).toBe('ava.updated@example.com')
     expect(resume.fileName).toBe('ava-updated.pdf')
   })

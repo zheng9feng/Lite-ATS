@@ -13,14 +13,17 @@ import {
 } from './auth/auth-middleware'
 import { type Permission, type RoleName } from './auth/auth-types'
 import { type createAuthService } from './auth/auth-service'
+import { type createJobPositionService } from './job-positions/job-position-service'
 import { createInlineContentDisposition } from './resumes/file-name'
 import { type createResumeService } from './resumes/resume-service'
 
 type AuthService = ReturnType<typeof createAuthService>
+type JobPositionService = ReturnType<typeof createJobPositionService>
 type ResumeService = ReturnType<typeof createResumeService>
 
 type CreateServerAppOptions = {
   authService: AuthService
+  jobPositionService: JobPositionService
   resumeService: ResumeService
 }
 
@@ -91,6 +94,7 @@ function requireAuthenticated(
 
 export function createServerApp({
   authService,
+  jobPositionService,
   resumeService,
 }: CreateServerAppOptions) {
   const app = express()
@@ -300,6 +304,105 @@ export function createServerApp({
   )
 
   app.get(
+    '/api/job-positions',
+    requirePermission('job-positions:read'),
+    (_request, response) => {
+      try {
+        response.json(jobPositionService.listJobPositions())
+      } catch (error) {
+        sendError(response, error)
+      }
+    }
+  )
+
+  app.get(
+    '/api/job-positions/active',
+    requirePermission('job-positions:read'),
+    (_request, response) => {
+      try {
+        response.json(jobPositionService.listActiveJobPositions())
+      } catch (error) {
+        sendError(response, error)
+      }
+    }
+  )
+
+  app.post(
+    '/api/job-positions',
+    requirePermission('job-positions:manage'),
+    (request, response) => {
+      try {
+        response.status(201).json(
+          jobPositionService.createJobPosition({
+            department: readString(request.body.department),
+            description: readString(request.body.description),
+            location: readString(request.body.location),
+            status:
+              request.body.status === 'inactive' ? 'inactive' : 'active',
+            title: readString(request.body.title),
+          })
+        )
+      } catch (error) {
+        sendError(response, error)
+      }
+    }
+  )
+
+  app.patch(
+    '/api/job-positions/:jobPositionId',
+    requirePermission('job-positions:manage'),
+    (request, response) => {
+      try {
+        response.json(
+          jobPositionService.updateJobPosition(
+            String(request.params.jobPositionId),
+            {
+              department:
+                request.body.department === undefined
+                  ? undefined
+                  : readString(request.body.department),
+              description:
+                request.body.description === undefined
+                  ? undefined
+                  : readString(request.body.description),
+              location:
+                request.body.location === undefined
+                  ? undefined
+                  : readString(request.body.location),
+              status:
+                request.body.status === 'active' ||
+                request.body.status === 'inactive'
+                  ? request.body.status
+                  : undefined,
+              title:
+                request.body.title === undefined
+                  ? undefined
+                  : readString(request.body.title),
+            }
+          )
+        )
+      } catch (error) {
+        sendError(response, error)
+      }
+    }
+  )
+
+  app.delete(
+    '/api/job-positions/:jobPositionId',
+    requirePermission('job-positions:manage'),
+    (request, response) => {
+      try {
+        jobPositionService.deleteJobPosition(
+          String(request.params.jobPositionId)
+        )
+        response.status(204).send()
+      } catch (error) {
+        sendError(response, error)
+      }
+    }
+  )
+
+  app.get(
     '/api/resumes',
     requirePermission('resumes:read'),
     (_request, response) => {
@@ -342,6 +445,7 @@ export function createServerApp({
             originalname: file.originalname,
             size: file.size,
           },
+          jobPositionId: readString(request.body.jobPositionId) || null,
         })
 
         response.status(201).json(resume)
@@ -374,6 +478,10 @@ export function createServerApp({
                   size: file.size,
                 }
               : undefined,
+            jobPositionId:
+              request.body.jobPositionId === undefined
+                ? undefined
+                : readString(request.body.jobPositionId) || null,
           }
         )
 

@@ -109,9 +109,45 @@ describe('createResumeService', () => {
       fileSize: 3,
       fileType: 'application/pdf',
       id: 'resume-1',
+      jobPositionId: null,
       previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
       uploadedAt: now.toISOString(),
     })
+  })
+
+  it('stores the selected database job position with resume metadata', async () => {
+    const service = createResumeService({
+      bucketName: 'resumes',
+      createId,
+      createToken,
+      getNow,
+      publicApiUrl: 'http://localhost:3001',
+      repository: createMemoryResumeRepository(),
+      storage,
+    })
+
+    const resume = await service.addResume({
+      applicant: {
+        email: 'ava@example.com',
+        name: 'Ava Chen',
+        positionApplied: 'Frontend Engineer',
+      },
+      file: {
+        buffer: Buffer.from('pdf'),
+        mimetype: 'application/pdf',
+        originalname: 'ava.pdf',
+        size: 3,
+      },
+      jobPositionId: 'job-frontend',
+    })
+
+    expect(resume).toMatchObject({
+      applicant: {
+        positionApplied: 'Frontend Engineer',
+      },
+      jobPositionId: 'job-frontend',
+    })
+    expect(service.listResumes()[0]?.jobPositionId).toBe('job-frontend')
   })
 
   it('creates an expiring public share link for a stored resume', async () => {

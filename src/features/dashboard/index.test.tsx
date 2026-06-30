@@ -181,9 +181,7 @@ describe('Dashboard resume summary', () => {
 
     const { getByText } = await renderDashboard()
 
-    await expect
-      .element(getByText('正在加载简历仪表盘'))
-      .toBeInTheDocument()
+    await expect.element(getByText('正在加载简历仪表盘')).toBeInTheDocument()
   })
 
   it('shows an empty state when no resumes are stored', async () => {

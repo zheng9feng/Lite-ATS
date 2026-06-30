@@ -1,5 +1,6 @@
 import {
   Construction,
+  BriefcaseBusiness,
   LayoutDashboard,
   FileText,
   FileUp,
@@ -63,6 +64,12 @@ export const sidebarData: SidebarData = {
           url: '/resumes/preview',
           icon: FileText,
           requiredPermissions: ['resumes:read'],
+        },
+        {
+          title: 'Job Positions',
+          url: '/job-positions',
+          icon: BriefcaseBusiness,
+          requiredPermissions: ['job-positions:read'],
         },
         {
           title: 'Users',

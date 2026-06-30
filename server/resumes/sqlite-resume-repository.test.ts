@@ -2,6 +2,8 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createJobPositionService } from '../job-positions/job-position-service'
+import { createSqliteJobPositionRepository } from '../job-positions/sqlite-job-position-repository'
 import { migrateResumeDatabase } from './sqlite-resume-migrations'
 import { createSqliteResumeRepository } from './sqlite-resume-repository'
 
@@ -20,6 +22,16 @@ describe('createSqliteResumeRepository', () => {
     const databasePath = join(tempDir, 'resumes.sqlite')
     await migrateResumeDatabase({ databasePath })
 
+    const jobPositionRepository = createSqliteJobPositionRepository({
+      databasePath,
+    })
+    createJobPositionService({
+      createId: () => 'job-frontend',
+      getNow: () => new Date('2026-06-21T06:00:00.000Z'),
+      repository: jobPositionRepository,
+    }).createJobPosition({
+      title: 'Frontend Engineer',
+    })
     const repository = createSqliteResumeRepository({ databasePath })
 
     repository.saveResume({
@@ -32,6 +44,7 @@ describe('createSqliteResumeRepository', () => {
       fileSize: 5,
       fileType: 'application/pdf',
       id: 'resume-old',
+      jobPositionId: null,
       objectName: 'resumes/resume-old/older.pdf',
       previewUrl: 'http://localhost:3001/api/resumes/resume-old/file',
       uploadedAt: '2026-06-21T07:00:00.000Z',
@@ -46,6 +59,7 @@ describe('createSqliteResumeRepository', () => {
       fileSize: 6,
       fileType: 'application/pdf',
       id: 'resume-new',
+      jobPositionId: 'job-frontend',
       objectName: 'resumes/resume-new/newer.pdf',
       previewUrl: 'http://localhost:3001/api/resumes/resume-new/file',
       uploadedAt: '2026-06-21T08:00:00.000Z',
@@ -55,14 +69,28 @@ describe('createSqliteResumeRepository', () => {
       'resume-new',
       'resume-old',
     ])
+    expect(repository.findResume('resume-new')?.jobPositionId).toBe(
+      'job-frontend'
+    )
 
     repository.close()
+    jobPositionRepository.close()
   })
 
   it('deletes stored resumes and cascades share rows', async () => {
     const databasePath = join(tempDir, 'resumes.sqlite')
     await migrateResumeDatabase({ databasePath })
 
+    const jobPositionRepository = createSqliteJobPositionRepository({
+      databasePath,
+    })
+    createJobPositionService({
+      createId: () => 'job-frontend',
+      getNow: () => new Date('2026-06-21T06:00:00.000Z'),
+      repository: jobPositionRepository,
+    }).createJobPosition({
+      title: 'Frontend Engineer',
+    })
     const repository = createSqliteResumeRepository({ databasePath })
 
     repository.saveResume({
@@ -75,6 +103,7 @@ describe('createSqliteResumeRepository', () => {
       fileSize: 3,
       fileType: 'application/pdf',
       id: 'resume-1',
+      jobPositionId: 'job-frontend',
       objectName: 'resumes/resume-1/ava.pdf',
       previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
       uploadedAt: '2026-06-21T08:00:00.000Z',
@@ -91,5 +120,6 @@ describe('createSqliteResumeRepository', () => {
     expect(repository.findShare('share-token')).toBeUndefined()
 
     repository.close()
+    jobPositionRepository.close()
   })
 })

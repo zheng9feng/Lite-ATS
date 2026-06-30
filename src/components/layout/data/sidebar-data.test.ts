@@ -51,4 +51,17 @@ describe('sidebarData', () => {
       url: '/permissions',
     })
   })
+
+  it('shows job positions to users with job position read access', () => {
+    const entries = collectNavEntries(
+      filterNavGroupsByPermissions(sidebarData.navGroups, [
+        'job-positions:read',
+      ])
+    )
+
+    expect(entries).toContainEqual({
+      title: 'Job Positions',
+      url: '/job-positions',
+    })
+  })
 })

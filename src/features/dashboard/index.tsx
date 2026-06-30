@@ -9,6 +9,8 @@ import {
   Upload,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useLanguage } from '@/context/language-provider'
+import { useCan } from '@/hooks/use-permission'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -18,8 +20,6 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useCan } from '@/hooks/use-permission'
-import { useLanguage } from '@/context/language-provider'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -156,9 +156,7 @@ export function Dashboard() {
             <h1 className='text-2xl font-bold tracking-tight'>
               {t('navigation.dashboard')}
             </h1>
-            <p className='text-muted-foreground'>
-              {t('dashboard.subtitle')}
-            </p>
+            <p className='text-muted-foreground'>{t('dashboard.subtitle')}</p>
           </div>
           <div className='flex flex-wrap items-center gap-2'>
             <Button asChild variant='outline'>

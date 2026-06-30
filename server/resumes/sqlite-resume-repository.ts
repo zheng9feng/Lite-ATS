@@ -18,6 +18,7 @@ type ResumeRow = {
   file_size: number
   file_type: string
   id: string
+  job_position_id: string | null
   object_name: string
   position_applied: string
   preview_url: string
@@ -47,6 +48,7 @@ function toResumeRecord(row: ResumeRow): StoredResumeRecord {
     fileSize: row.file_size,
     fileType: row.file_type,
     id: row.id,
+    jobPositionId: row.job_position_id,
     objectName: row.object_name,
     previewUrl: row.preview_url,
     uploadedAt: row.uploaded_at,
@@ -78,6 +80,7 @@ export function createSqliteResumeRepository({
       file_name,
       file_size,
       file_type,
+      job_position_id,
       object_name,
       preview_url,
       uploaded_at
@@ -89,6 +92,7 @@ export function createSqliteResumeRepository({
       @fileName,
       @fileSize,
       @fileType,
+      @jobPositionId,
       @objectName,
       @previewUrl,
       @uploadedAt
@@ -103,6 +107,7 @@ export function createSqliteResumeRepository({
       file_name,
       file_size,
       file_type,
+      job_position_id,
       object_name,
       preview_url,
       uploaded_at
@@ -118,6 +123,7 @@ export function createSqliteResumeRepository({
       file_name,
       file_size,
       file_type,
+      job_position_id,
       object_name,
       preview_url,
       uploaded_at
@@ -180,6 +186,7 @@ export function createSqliteResumeRepository({
         fileSize: resume.fileSize,
         fileType: resume.fileType,
         id: resume.id,
+        jobPositionId: resume.jobPositionId,
         objectName: resume.objectName,
         positionApplied: resume.applicant.positionApplied,
         previewUrl: resume.previewUrl,

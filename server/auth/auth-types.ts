@@ -1,4 +1,6 @@
 export const permissions = [
+  'job-positions:read',
+  'job-positions:manage',
   'resumes:read',
   'resumes:create',
   'resumes:update',

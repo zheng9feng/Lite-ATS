@@ -12,6 +12,7 @@ import { ResumePreviewPage } from './resume-preview-page'
 
 const createResumeShareLink = vi.fn()
 const deleteResume = vi.fn()
+const listActiveJobPositions = vi.fn()
 const listResumes = vi.fn()
 const updateResume = vi.fn()
 
@@ -36,6 +37,11 @@ vi.mock('../data/resume-api', () => ({
   deleteResume: (...args: unknown[]) => deleteResume(...args),
   listResumes: (...args: unknown[]) => listResumes(...args),
   updateResume: (...args: unknown[]) => updateResume(...args),
+}))
+
+vi.mock('@/features/job-positions/data/job-positions-api', () => ({
+  listActiveJobPositions: (...args: unknown[]) =>
+    listActiveJobPositions(...args),
 }))
 
 vi.mock('sonner', () => ({
@@ -111,12 +117,35 @@ describe('ResumePreviewPage', () => {
       shareUrl: 'http://localhost:3001/api/resume-shares/share-token',
       token: 'share-token',
     })
+    listActiveJobPositions.mockResolvedValue([
+      {
+        createdAt: '2026-06-25T08:00:00.000Z',
+        department: 'Engineering',
+        description: '',
+        id: 'job-frontend',
+        location: 'Remote',
+        status: 'active',
+        title: 'Frontend Engineer',
+        updatedAt: '2026-06-25T08:00:00.000Z',
+      },
+      {
+        createdAt: '2026-06-25T08:00:00.000Z',
+        department: 'Product',
+        description: '',
+        id: 'job-product',
+        location: 'Shanghai',
+        status: 'active',
+        title: 'Product Engineer',
+        updatedAt: '2026-06-25T08:00:00.000Z',
+      },
+    ])
     deleteResume.mockResolvedValue(undefined)
     updateResume.mockImplementation(async (payload) => ({
       ...createStoredResume(1),
       applicant: payload.applicant,
       fileName: payload.file?.name ?? 'candidate-1.pdf',
       fileSize: payload.file?.size ?? 1024,
+      jobPositionId: payload.jobPositionId,
     }))
     useAuthStore.getState().auth.setAuthSnapshot({
       permissions: [
@@ -275,7 +304,8 @@ describe('ResumePreviewPage', () => {
     )
     await userEvent.fill(getByLabelText('姓名'), 'Updated Candidate')
     await userEvent.fill(getByLabelText('邮箱'), 'updated@example.com')
-    await userEvent.fill(getByLabelText('申请职位'), 'Product Engineer')
+    await userEvent.click(getByRole('combobox', { name: '申请职位' }))
+    await userEvent.click(getByRole('option', { name: 'Product Engineer' }))
     await expect
       .element(getByRole('button', { name: /^选择文件$/i }))
       .toBeInTheDocument()
@@ -292,6 +322,7 @@ describe('ResumePreviewPage', () => {
           positionApplied: 'Product Engineer',
         },
         file,
+        jobPositionId: 'job-product',
         resumeId: 'resume-1',
       })
     )

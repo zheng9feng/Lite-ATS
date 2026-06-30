@@ -11,11 +11,13 @@ export type ResumeShareLink = {
 type UploadResumePayload = {
   applicant: ResumeApplicant
   file: File
+  jobPositionId?: string | null
 }
 
 type UpdateResumePayload = {
   applicant: ResumeApplicant
   file?: File
+  jobPositionId?: string | null
   resumeId: string
 }
 
@@ -55,11 +57,15 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
 export async function uploadResume({
   applicant,
   file,
+  jobPositionId,
 }: UploadResumePayload): Promise<ResumeFile> {
   const body = new FormData()
   body.append('name', applicant.name)
   body.append('email', applicant.email)
   body.append('positionApplied', applicant.positionApplied)
+  if (jobPositionId) {
+    body.append('jobPositionId', jobPositionId)
+  }
   body.append('resume', file)
 
   const response = await fetch(apiUrl('/api/resumes'), {
@@ -82,12 +88,16 @@ export async function listResumes(): Promise<ResumeFile[]> {
 export async function updateResume({
   applicant,
   file,
+  jobPositionId,
   resumeId,
 }: UpdateResumePayload): Promise<ResumeFile> {
   const body = new FormData()
   body.append('name', applicant.name)
   body.append('email', applicant.email)
   body.append('positionApplied', applicant.positionApplied)
+  if (jobPositionId) {
+    body.append('jobPositionId', jobPositionId)
+  }
 
   if (file) {
     body.append('resume', file)

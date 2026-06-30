@@ -53,5 +53,9 @@ export function getRoutePermissions(pathname: string): AppPermission[] {
     return ['rbac:manage']
   }
 
+  if (pathname.startsWith('/job-positions')) {
+    return ['job-positions:read']
+  }
+
   return []
 }

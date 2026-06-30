@@ -16,6 +16,7 @@ export type StoredResume = {
   fileSize: number
   fileType: string
   id: string
+  jobPositionId: string | null
   previewUrl: string
   uploadedAt: string
 }
@@ -97,11 +98,13 @@ type CreateResumeServiceOptions = {
 type AddResumePayload = {
   applicant: ResumeApplicant
   file: UploadedResumeFile
+  jobPositionId?: string | null
 }
 
 type UpdateResumePayload = {
   applicant: ResumeApplicant
   file?: UploadedResumeFile
+  jobPositionId?: string | null
 }
 
 function trimTrailingSlash(value: string) {
@@ -137,7 +140,7 @@ export function createResumeService({
 }: CreateResumeServiceOptions) {
   const normalizedPublicApiUrl = trimTrailingSlash(publicApiUrl)
 
-  async function addResume({ applicant, file }: AddResumePayload) {
+  async function addResume({ applicant, file, jobPositionId }: AddResumePayload) {
     const id = createId()
     const uploadedAt = getNow()
     const fileName = normalizeUploadedFileName(file.originalname)
@@ -159,6 +162,7 @@ export function createResumeService({
       fileSize: file.size,
       fileType,
       id,
+      jobPositionId: jobPositionId ?? null,
       objectName,
       previewUrl: `${normalizedPublicApiUrl}/api/resumes/${id}/file`,
       uploadedAt: uploadedAt.toISOString(),
@@ -171,12 +175,14 @@ export function createResumeService({
 
   async function updateResume(
     resumeId: string,
-    { applicant, file }: UpdateResumePayload
+    { applicant, file, jobPositionId }: UpdateResumePayload
   ) {
     const currentResume = getResume(resumeId)
     let nextResume: StoredResumeRecord = {
       ...currentResume,
       applicant,
+      jobPositionId:
+        jobPositionId === undefined ? currentResume.jobPositionId : jobPositionId,
     }
 
     if (file) {

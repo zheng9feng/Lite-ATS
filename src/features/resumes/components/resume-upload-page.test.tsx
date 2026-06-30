@@ -10,6 +10,7 @@ import { useResumeStore } from '../data/resume-store'
 import { ResumeUploadPage } from './resume-upload-page'
 
 const navigate = vi.fn()
+const listActiveJobPositions = vi.fn()
 const uploadResume = vi.fn()
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -22,6 +23,11 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 vi.mock('../data/resume-api', () => ({
   uploadResume: (...args: unknown[]) => uploadResume(...args),
+}))
+
+vi.mock('@/features/job-positions/data/job-positions-api', () => ({
+  listActiveJobPositions: (...args: unknown[]) =>
+    listActiveJobPositions(...args),
 }))
 
 vi.mock('@/components/config-drawer', () => ({
@@ -57,6 +63,28 @@ describe('ResumeUploadPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useResumeStore.setState({ resumes: [] })
+    listActiveJobPositions.mockResolvedValue([
+      {
+        createdAt: '2026-06-25T08:00:00.000Z',
+        department: 'Engineering',
+        description: '',
+        id: 'job-frontend',
+        location: 'Remote',
+        status: 'active',
+        title: 'Frontend Engineer',
+        updatedAt: '2026-06-25T08:00:00.000Z',
+      },
+      {
+        createdAt: '2026-06-25T08:00:00.000Z',
+        department: 'Product',
+        description: '',
+        id: 'job-product',
+        location: 'Shanghai',
+        status: 'active',
+        title: 'Product Engineer',
+        updatedAt: '2026-06-25T08:00:00.000Z',
+      },
+    ])
     uploadResume.mockResolvedValue({
       applicant: {
         email: 'ava@example.com',
@@ -71,6 +99,17 @@ describe('ResumeUploadPage', () => {
       uploadedAt: '2026-06-21T08:00:00.000Z',
     })
   })
+
+  async function selectJobPosition(
+    screen: Pick<
+      Awaited<ReturnType<typeof renderResumeUploadPage>>,
+      'getByRole'
+    >,
+    name = 'Frontend Engineer'
+  ) {
+    await userEvent.click(screen.getByRole('combobox', { name: '申请职位' }))
+    await userEvent.click(screen.getByRole('option', { name }))
+  }
 
   it('shows validation when submitting an empty form', async () => {
     const { getByRole, getByText } = await renderResumeUploadPage()
@@ -97,7 +136,7 @@ describe('ResumeUploadPage', () => {
     await expect.element(getByText('未选择文件')).toBeInTheDocument()
     await userEvent.type(getByLabelText('姓名'), 'Ava Chen')
     await userEvent.type(getByLabelText('邮箱'), 'ava@example.com')
-    await userEvent.type(getByLabelText('申请职位'), 'Frontend Engineer')
+    await selectJobPosition({ getByRole })
     await userEvent.upload(
       getByLabelText('简历 PDF'),
       new File(['not pdf'], 'resume.txt', { type: 'text/plain' })
@@ -118,7 +157,7 @@ describe('ResumeUploadPage', () => {
 
     await userEvent.type(getByLabelText('姓名'), 'Ava Chen')
     await userEvent.type(getByLabelText('邮箱'), 'ava@example.com')
-    await userEvent.type(getByLabelText('申请职位'), 'Frontend Engineer')
+    await selectJobPosition({ getByRole })
     await userEvent.upload(getByLabelText('简历 PDF'), file)
     await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
 
@@ -130,6 +169,7 @@ describe('ResumeUploadPage', () => {
         positionApplied: 'Frontend Engineer',
       },
       file,
+      jobPositionId: 'job-frontend',
     })
     expect(useResumeStore.getState().resumes[0]).toEqual({
       applicant: {
@@ -181,7 +221,7 @@ describe('ResumeUploadPage', () => {
 
     await userEvent.type(getByLabelText('姓名'), 'New Candidate')
     await userEvent.type(getByLabelText('邮箱'), 'new@example.com')
-    await userEvent.type(getByLabelText('申请职位'), 'Frontend Engineer')
+    await selectJobPosition({ getByRole })
     await userEvent.upload(getByLabelText('简历 PDF'), file)
     await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
 

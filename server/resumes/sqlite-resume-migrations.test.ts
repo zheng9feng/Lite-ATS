@@ -37,10 +37,35 @@ describe('migrateResumeDatabase', () => {
       .all() as Array<{ name: string }>
 
     expect(tables.map((table) => table.name)).toEqual(
-      expect.arrayContaining(['kysely_migration', 'resume_shares', 'resumes'])
+      expect.arrayContaining([
+        'job_positions',
+        'kysely_migration',
+        'resume_shares',
+        'resumes',
+      ])
     )
     expect(migrations.map((migration) => migration.name)).toContain(
       '20260621000000_create_resume_metadata'
+    )
+    expect(migrations.map((migration) => migration.name)).toContain(
+      '20260625000000_create_job_positions'
+    )
+
+    const resumeColumns = database
+      .prepare('PRAGMA table_info(resumes)')
+      .all() as Array<{ name: string }>
+    const permissions = database
+      .prepare('SELECT name FROM t_permissions ORDER BY name')
+      .all() as Array<{ name: string }>
+
+    expect(resumeColumns.map((column) => column.name)).toContain(
+      'job_position_id'
+    )
+    expect(permissions.map((permission) => permission.name)).toEqual(
+      expect.arrayContaining([
+        'job-positions:manage',
+        'job-positions:read',
+      ])
     )
 
     database.close()

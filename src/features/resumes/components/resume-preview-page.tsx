@@ -69,7 +69,12 @@ import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
+import { SelectDropdown } from '@/components/select-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
+import {
+  listActiveJobPositions,
+  type JobPosition,
+} from '@/features/job-positions/data/job-positions-api'
 import {
   createResumeShareLink,
   deleteResume as deleteResumeRequest,
@@ -97,7 +102,7 @@ function createEditResumeFormSchema(t: TFunction) {
       .min(1, {
         message: t('resumes.form.validation.applicantName'),
       }),
-    positionApplied: z
+    jobPositionId: z
       .string()
       .trim()
       .min(1, {
@@ -111,6 +116,7 @@ type EditResumeForm = z.infer<ReturnType<typeof createEditResumeFormSchema>>
 type EditResumePayload = {
   applicant: ResumeFile['applicant']
   file?: File
+  jobPositionId: string
   resumeId: string
 }
 
@@ -160,23 +166,75 @@ function ResumeEditDialog({
     defaultValues: {
       email: resume.applicant.email,
       file: undefined,
+      jobPositionId: resume.jobPositionId ?? '',
       name: resume.applicant.name,
-      positionApplied: resume.applicant.positionApplied,
     },
   })
+  const [jobPositions, setJobPositions] = useState<JobPosition[]>([])
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [isLoadingJobPositions, setIsLoadingJobPositions] = useState(true)
   const fileRef = form.register('file')
   const selectedFiles = useWatch({ control: form.control, name: 'file' })
   const selectedFileName = selectedFiles?.[0]?.name
   const isSubmitting = form.formState.isSubmitting
 
+  useEffect(() => {
+    if (!open) return
+
+    let isCurrent = true
+
+    listActiveJobPositions()
+      .then((positions) => {
+        if (!isCurrent) return
+
+        setJobPositions(positions)
+
+        if (!form.getValues('jobPositionId')) {
+          const currentPosition = positions.find(
+            (position) => position.title === resume.applicant.positionApplied
+          )
+
+          if (currentPosition) {
+            form.setValue('jobPositionId', currentPosition.id)
+          }
+        }
+      })
+      .catch((reason: unknown) => {
+        if (isCurrent) {
+          setIsLoadingJobPositions(false)
+          setLoadError(
+            reason instanceof Error
+              ? reason.message
+              : t('jobPositionsPage.api.failed')
+          )
+        }
+      })
+      .then(() => {
+        if (isCurrent) setIsLoadingJobPositions(false)
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [form, open, resume.applicant.positionApplied, t])
+
   const handleSubmit = async (values: EditResumeForm) => {
+    const jobPosition = jobPositions.find(
+      (position) => position.id === values.jobPositionId
+    )
+
+    if (!jobPosition) {
+      throw new Error(t('resumes.form.validation.positionApplied'))
+    }
+
     await onSubmit({
       applicant: {
         email: values.email.trim(),
         name: values.name.trim(),
-        positionApplied: values.positionApplied.trim(),
+        positionApplied: jobPosition.title,
       },
       file: values.file?.[0],
+      jobPositionId: jobPosition.id,
       resumeId: resume.id,
     })
   }
@@ -199,9 +257,14 @@ function ResumeEditDialog({
         <Form {...form}>
           <form
             id='resume-edit-form'
-            className='space-y-4'
+            className='flex flex-col gap-4'
             onSubmit={form.handleSubmit(handleSubmit)}
           >
+            {loadError ? (
+              <Alert variant='destructive'>
+                <AlertDescription>{loadError}</AlertDescription>
+              </Alert>
+            ) : null}
             <div className='grid gap-4 sm:grid-cols-2'>
               <FormField
                 control={form.control}
@@ -241,16 +304,23 @@ function ResumeEditDialog({
             </div>
             <FormField
               control={form.control}
-              name='positionApplied'
+              name='jobPositionId'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('resumes.form.positionApplied')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder={t('resumes.form.positionPlaceholder')}
-                      {...field}
-                    />
-                  </FormControl>
+                  <SelectDropdown
+                    className='w-full'
+                    defaultValue={field.value}
+                    disabled={isLoadingJobPositions}
+                    isControlled
+                    isPending={isLoadingJobPositions}
+                    items={jobPositions.map((position) => ({
+                      label: position.title,
+                      value: position.id,
+                    }))}
+                    onValueChange={field.onChange}
+                    placeholder={t('resumes.form.positionPlaceholder')}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -444,11 +514,12 @@ export function ResumePreviewPage() {
   )
 
   const saveResumeChanges = useCallback(
-    async ({ applicant, file, resumeId }: EditResumePayload) => {
+    async ({ applicant, file, jobPositionId, resumeId }: EditResumePayload) => {
       try {
         const updatedResume = await updateResumeRequest({
           applicant,
           file,
+          jobPositionId,
           resumeId,
         })
 

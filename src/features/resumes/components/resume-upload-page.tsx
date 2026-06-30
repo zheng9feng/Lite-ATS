@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -30,7 +30,12 @@ import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
+import { SelectDropdown } from '@/components/select-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
+import {
+  listActiveJobPositions,
+  type JobPosition,
+} from '@/features/job-positions/data/job-positions-api'
 import { uploadResume } from '../data/resume-api'
 import { useResumeStore } from '../data/resume-store'
 import { ResumeFileInput } from './resume-file-input'
@@ -55,7 +60,7 @@ function createResumeUploadFormSchema(t: TFunction) {
       .min(1, {
         message: t('resumes.form.validation.applicantName'),
       }),
-    positionApplied: z
+    jobPositionId: z
       .string()
       .trim()
       .min(1, {
@@ -85,25 +90,64 @@ export function ResumeUploadPage() {
     defaultValues: {
       email: '',
       file: undefined,
+      jobPositionId: '',
       name: '',
-      positionApplied: '',
     },
   })
+  const [jobPositions, setJobPositions] = useState<JobPosition[]>([])
+  const [isLoadingJobPositions, setIsLoadingJobPositions] = useState(true)
   const fileRef = form.register('file')
   const selectedFiles = useWatch({ control: form.control, name: 'file' })
   const selectedFileName = selectedFiles?.[0]?.name
+
+  useEffect(() => {
+    let isCurrent = true
+
+    listActiveJobPositions()
+      .then((positions) => {
+        if (isCurrent) {
+          setJobPositions(positions)
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setIsLoadingJobPositions(false)
+          setSubmitError(
+            error instanceof Error
+              ? error.message
+              : t('jobPositionsPage.api.failed')
+          )
+        }
+      })
+      .then(() => {
+        if (isCurrent) setIsLoadingJobPositions(false)
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [t])
 
   const onSubmit = async (values: ResumeUploadForm) => {
     setSubmitError(null)
 
     try {
+      const jobPosition = jobPositions.find(
+        (position) => position.id === values.jobPositionId
+      )
+
+      if (!jobPosition) {
+        throw new Error(t('resumes.form.validation.positionApplied'))
+      }
+
       const resume = await uploadResume({
         applicant: {
           email: values.email.trim(),
           name: values.name.trim(),
-          positionApplied: values.positionApplied.trim(),
+          positionApplied: jobPosition.title,
         },
         file: values.file[0],
+        jobPositionId: jobPosition.id,
       })
 
       addResume(resume)
@@ -204,16 +248,23 @@ export function ResumeUploadPage() {
                 </div>
                 <FormField
                   control={form.control}
-                  name='positionApplied'
+                  name='jobPositionId'
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('resumes.form.positionApplied')}</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder={t('resumes.form.positionPlaceholder')}
-                          {...field}
-                        />
-                      </FormControl>
+                      <SelectDropdown
+                        className='w-full'
+                        defaultValue={field.value}
+                        disabled={isLoadingJobPositions}
+                        isControlled
+                        isPending={isLoadingJobPositions}
+                        items={jobPositions.map((position) => ({
+                          label: position.title,
+                          value: position.id,
+                        }))}
+                        onValueChange={field.onChange}
+                        placeholder={t('resumes.form.positionPlaceholder')}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}

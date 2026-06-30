@@ -126,6 +126,7 @@ export const resources = {
         },
         helpCenter: '帮助中心',
         internalServerError: '服务器内部错误',
+        jobPositions: '职位管理',
         maintenanceError: '维护错误',
         newTeam: '新团队',
         notifications: '通知',
@@ -226,6 +227,56 @@ export const resources = {
           assignedRoles: '已分配角色',
           effectivePermissions: '有效权限',
         },
+      },
+      jobPositionsPage: {
+        actions: {
+          add: '新增职位',
+          delete: '删除',
+          edit: '编辑',
+          openMenu: '打开职位操作菜单',
+          save: '保存',
+          saving: '正在保存...',
+        },
+        api: {
+          failed: '职位请求失败。',
+        },
+        columns: {
+          department: '部门',
+          location: '地点',
+          status: '状态',
+          title: '职位',
+        },
+        delete: {
+          description:
+            '确定要删除 {{title}} 吗？历史简历会保留申请职位文本，但会清除此职位关联。',
+          title: '删除职位',
+        },
+        description: '管理可供简历选择的招聘职位。',
+        dialog: {
+          createTitle: '新增职位',
+          description: '维护职位名称、部门、地点、状态和说明。',
+          editTitle: '编辑职位',
+        },
+        errors: {
+          delete: '无法删除职位。',
+          save: '无法保存职位。',
+        },
+        fields: {
+          department: '部门',
+          description: '说明',
+          location: '地点',
+          status: '状态',
+          title: '职位名称',
+        },
+        filters: {
+          allStatuses: '全部状态',
+          searchPlaceholder: '筛选职位...',
+        },
+        status: {
+          active: '启用',
+          inactive: '停用',
+        },
+        title: '职位管理',
       },
       sidebar: {
         description: '显示移动端侧边栏。',
@@ -621,6 +672,7 @@ export const resources = {
         },
         helpCenter: 'Help Center',
         internalServerError: 'Internal Server Error',
+        jobPositions: 'Job Positions',
         maintenanceError: 'Maintenance Error',
         newTeam: 'New Team',
         notifications: 'Notifications',
@@ -722,6 +774,57 @@ export const resources = {
           assignedRoles: 'Assigned Roles',
           effectivePermissions: 'Effective Permissions',
         },
+      },
+      jobPositionsPage: {
+        actions: {
+          add: 'Add position',
+          delete: 'Delete',
+          edit: 'Edit',
+          openMenu: 'Open job position actions',
+          save: 'Save',
+          saving: 'Saving...',
+        },
+        api: {
+          failed: 'Job position request failed.',
+        },
+        columns: {
+          department: 'Department',
+          location: 'Location',
+          status: 'Status',
+          title: 'Position',
+        },
+        delete: {
+          description:
+            'Delete {{title}}? Historical resumes keep their applied position text, but this position link will be cleared.',
+          title: 'Delete job position',
+        },
+        description: 'Manage recruiting positions available in resume forms.',
+        dialog: {
+          createTitle: 'Add job position',
+          description:
+            'Maintain the title, department, location, status, and description.',
+          editTitle: 'Edit job position',
+        },
+        errors: {
+          delete: 'Unable to delete job position.',
+          save: 'Unable to save job position.',
+        },
+        fields: {
+          department: 'Department',
+          description: 'Description',
+          location: 'Location',
+          status: 'Status',
+          title: 'Title',
+        },
+        filters: {
+          allStatuses: 'All statuses',
+          searchPlaceholder: 'Filter positions...',
+        },
+        status: {
+          active: 'Active',
+          inactive: 'Inactive',
+        },
+        title: 'Job Positions',
       },
       sidebar: {
         description: 'Displays the mobile sidebar.',

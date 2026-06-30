@@ -18,6 +18,7 @@ const NAV_TITLE_KEYS: Record<string, string> = {
   General: 'navigation.groups.general',
   'Help Center': 'navigation.helpCenter',
   'Internal Server Error': 'navigation.internalServerError',
+  'Job Positions': 'navigation.jobPositions',
   'Maintenance Error': 'navigation.maintenanceError',
   'Not Found': 'navigation.notFound',
   Notifications: 'navigation.notifications',

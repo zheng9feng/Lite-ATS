@@ -12,6 +12,7 @@ export type ResumeFile = {
   fileSize: number
   fileType: string
   id: string
+  jobPositionId?: string | null
   previewUrl: string
   uploadedAt: string
 }

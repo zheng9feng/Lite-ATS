@@ -3,6 +3,8 @@ import { createServerApp } from './app'
 import { createAuthService } from './auth/auth-service'
 import { hashPassword } from './auth/password'
 import { createSqliteAuthRepository } from './auth/sqlite-auth-repository'
+import { createJobPositionService } from './job-positions/job-position-service'
+import { createSqliteJobPositionRepository } from './job-positions/sqlite-job-position-repository'
 import { createMinioStorage } from './resumes/minio-storage'
 import { createResumeService } from './resumes/resume-service'
 import { migrateResumeDatabase } from './resumes/sqlite-resume-migrations'
@@ -42,6 +44,9 @@ if (localAdmin.email && localAdmin.password) {
 
 const app = createServerApp({
   authService,
+  jobPositionService: createJobPositionService({
+    repository: createSqliteJobPositionRepository({ databasePath }),
+  }),
   resumeService: createResumeService({
     bucketName,
     publicApiUrl,

@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createServerApp } from '../app'
+import { createJobPositionService } from '../job-positions/job-position-service'
+import { createSqliteJobPositionRepository } from '../job-positions/sqlite-job-position-repository'
 import { createResumeService } from '../resumes/resume-service'
 import { migrateResumeDatabase } from '../resumes/sqlite-resume-migrations'
 import { createSqliteResumeRepository } from '../resumes/sqlite-resume-repository'
@@ -88,6 +90,9 @@ async function createTestApi(): Promise<TestApi> {
   await migrateResumeDatabase({ databasePath })
 
   const authRepository = createSqliteAuthRepository({ databasePath })
+  const jobPositionRepository = createSqliteJobPositionRepository({
+    databasePath,
+  })
   const resumeRepository = createSqliteResumeRepository({ databasePath })
   const adminRole = authRepository.findRoleByName('admin')
   const normalRole = authRepository.findRoleByName('normal')
@@ -116,6 +121,11 @@ async function createTestApi(): Promise<TestApi> {
       createToken: () => 'session-token',
       repository: authRepository,
     }),
+    jobPositionService: createJobPositionService({
+      createId: () => 'job-frontend',
+      getNow: () => new Date('2026-06-25T08:00:00.000Z'),
+      repository: jobPositionRepository,
+    }),
     resumeService: createResumeService({
       bucketName: 'resumes',
       publicApiUrl: 'http://localhost:3001',
@@ -131,6 +141,7 @@ async function createTestApi(): Promise<TestApi> {
   return {
     close: async () => {
       authRepository.close()
+      jobPositionRepository.close()
       resumeRepository.close()
       await rm(tempDir, { force: true, recursive: true })
     },
@@ -265,6 +276,127 @@ describe('auth API integration', () => {
     })
 
     expect(response.status).toBe(403)
+  })
+
+  it('requires job position read and manage access for job position endpoints', async () => {
+    await api.request('/api/auth/login', {
+      body: JSON.stringify({
+        email: 'normal@example.com',
+        password: 'password123',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+
+    const listResponse = await api.request('/api/job-positions', {
+      headers: {
+        Authorization: 'Bearer session-token',
+      },
+    })
+    const createResponse = await api.request('/api/job-positions', {
+      body: JSON.stringify({
+        title: 'Frontend Engineer',
+      }),
+      headers: {
+        Authorization: 'Bearer session-token',
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+
+    expect(listResponse.status).toBe(403)
+    expect(createResponse.status).toBe(403)
+  })
+
+  it('lets admins manage database job positions', async () => {
+    const loginResponse = await api.request('/api/auth/login', {
+      body: JSON.stringify({
+        email: 'admin@example.com',
+        password: 'password123',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const loginBody = (await loginResponse.json()) as {
+      permissions: string[]
+      sessionToken: string
+    }
+    const authHeaders = {
+      Authorization: `Bearer ${loginBody.sessionToken}`,
+      'Content-Type': 'application/json',
+    }
+
+    expect(loginBody.permissions).toEqual(
+      expect.arrayContaining([
+        'job-positions:manage',
+        'job-positions:read',
+      ])
+    )
+
+    const createResponse = await api.request('/api/job-positions', {
+      body: JSON.stringify({
+        department: 'Engineering',
+        description: 'Builds product interfaces.',
+        location: 'Remote',
+        status: 'active',
+        title: 'Frontend Engineer',
+      }),
+      headers: authHeaders,
+      method: 'POST',
+    })
+    const created = (await createResponse.json()) as { id: string }
+
+    expect(createResponse.status).toBe(201)
+    expect(created).toMatchObject({
+      department: 'Engineering',
+      id: 'job-frontend',
+      location: 'Remote',
+      status: 'active',
+      title: 'Frontend Engineer',
+    })
+
+    const activeResponse = await api.request('/api/job-positions/active', {
+      headers: {
+        Authorization: `Bearer ${loginBody.sessionToken}`,
+      },
+    })
+
+    expect(activeResponse.status).toBe(200)
+    await expect(activeResponse.json()).resolves.toEqual([created])
+
+    const updateResponse = await api.request(
+      `/api/job-positions/${created.id}`,
+      {
+        body: JSON.stringify({
+          status: 'inactive',
+          title: 'Senior Frontend Engineer',
+        }),
+        headers: authHeaders,
+        method: 'PATCH',
+      }
+    )
+
+    expect(updateResponse.status).toBe(200)
+    await expect(updateResponse.json()).resolves.toMatchObject({
+      status: 'inactive',
+      title: 'Senior Frontend Engineer',
+    })
+
+    const deleteResponse = await api.request(
+      `/api/job-positions/${created.id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${loginBody.sessionToken}`,
+        },
+        method: 'DELETE',
+      }
+    )
+
+    expect(deleteResponse.status).toBe(204)
   })
 
   it('manages roles and assigns users to multiple roles by ID', async () => {

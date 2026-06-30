@@ -66,4 +66,18 @@ describe('auth guard', () => {
       })
     ).toEqual({ type: 'forbidden' })
   })
+
+  it('requires job position read access for the job positions module', () => {
+    expect(getRoutePermissions('/job-positions')).toEqual([
+      'job-positions:read',
+    ])
+    expect(
+      getAuthGuardDecision({
+        currentHref: '/job-positions',
+        hasSession: true,
+        permissions: ['resumes:read'],
+        requiredPermissions: getRoutePermissions('/job-positions'),
+      })
+    ).toEqual({ type: 'forbidden' })
+  })
 })
