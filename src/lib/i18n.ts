@@ -216,6 +216,39 @@ export const resources = {
         roleEditor: {
           description: '为选中的角色配置权限。',
         },
+        permissionDescriptions: {
+          'job-positions': {
+            manage: '创建、编辑和删除职位。',
+            read: '查看职位，并在简历表单中使用启用的职位。',
+          },
+          rbac: {
+            manage: '管理角色和权限分配。',
+          },
+          resumes: {
+            create: '上传新简历。',
+            delete: '删除简历。',
+            read: '查看简历和简历文件。',
+            share: '创建公开简历分享链接。',
+            update: '编辑简历元数据和文件。',
+          },
+          users: {
+            manage: '管理本地用户。',
+          },
+        },
+        resources: {
+          'job-positions': '职位',
+          rbac: '权限',
+          resumes: '简历',
+          users: '用户',
+        },
+        roles: {
+          admin: {
+            description: '拥有用户管理、权限配置和简历管理的完整访问权限。',
+          },
+          normal: {
+            description: '拥有简历只读访问权限。',
+          },
+        },
         systemRole: '系统角色',
         tabs: {
           roles: '角色配置',
@@ -226,6 +259,10 @@ export const resources = {
         userRoles: {
           assignedRoles: '已分配角色',
           effectivePermissions: '有效权限',
+        },
+        userStatus: {
+          active: '已启用',
+          inactive: '未启用',
         },
       },
       jobPositionsPage: {
@@ -763,6 +800,39 @@ export const resources = {
         roleEditor: {
           description: 'Configure permissions for the selected role.',
         },
+        permissionDescriptions: {
+          'job-positions': {
+            manage: 'Create, edit, and delete job positions.',
+            read: 'View job positions and use active positions in resume forms.',
+          },
+          rbac: {
+            manage: 'Manage role and permission assignments.',
+          },
+          resumes: {
+            create: 'Upload new resumes.',
+            delete: 'Delete resumes.',
+            read: 'View resumes and resume files.',
+            share: 'Create public resume share links.',
+            update: 'Edit resume metadata and files.',
+          },
+          users: {
+            manage: 'Manage local users.',
+          },
+        },
+        resources: {
+          'job-positions': 'Job Positions',
+          rbac: 'Permissions',
+          resumes: 'Resumes',
+          users: 'Users',
+        },
+        roles: {
+          admin: {
+            description: 'Full access to user management, RBAC, and resumes.',
+          },
+          normal: {
+            description: 'Read-only access to resumes.',
+          },
+        },
         systemRole: 'System Role',
         tabs: {
           roles: 'Role Configuration',
@@ -773,6 +843,10 @@ export const resources = {
         userRoles: {
           assignedRoles: 'Assigned Roles',
           effectivePermissions: 'Effective Permissions',
+        },
+        userStatus: {
+          active: 'Active',
+          inactive: 'Inactive',
         },
       },
       jobPositionsPage: {

@@ -1,4 +1,5 @@
 import { type FormEvent, useMemo, useState } from 'react'
+import { type TFunction } from 'i18next'
 import { Plus, Save, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { type AppPermission } from '@/lib/permissions'
@@ -64,6 +65,38 @@ function toggleValue<T>(values: T[], value: T) {
 
 function roleNames(roles: RoleSummary[]) {
   return roles.map((role) => role.name).join(', ')
+}
+
+function translatePermissionDescription(
+  t: TFunction,
+  permission: { description: string; name: AppPermission }
+) {
+  const permissionKey = permission.name.replace(':', '.')
+
+  return t(`permissionsPage.permissionDescriptions.${permissionKey}`, {
+    defaultValue: permission.description,
+  })
+}
+
+function translateResourceName(t: TFunction, resource: string) {
+  return t(`permissionsPage.resources.${resource}`, {
+    defaultValue: resource,
+  })
+}
+
+function translateRoleDescription(t: TFunction, role: RoleSummary) {
+  return t(`permissionsPage.roles.${role.name}.description`, {
+    defaultValue: role.description,
+  })
+}
+
+function translateUserStatus(
+  t: TFunction,
+  status: PermissionResources['users'][number]['status']
+) {
+  return t(`permissionsPage.userStatus.${status}`, {
+    defaultValue: status,
+  })
 }
 
 export function PermissionsPage({
@@ -308,7 +341,7 @@ export function PermissionsPage({
                     )}
                   </div>
                   <p className='mt-1 line-clamp-2 text-sm text-muted-foreground'>
-                    {role.description}
+                    {translateRoleDescription(t, role)}
                   </p>
                   <p className='mt-2 text-xs text-muted-foreground'>
                     {t('permissionsPage.userCount', {
@@ -390,7 +423,9 @@ export function PermissionsPage({
                           key={group.resource}
                           className='rounded-lg border p-4'
                         >
-                          <h3 className='font-medium'>{group.resource}</h3>
+                          <h3 className='font-medium'>
+                            {translateResourceName(t, group.resource)}
+                          </h3>
                           <div className='mt-3 flex flex-col gap-3'>
                             {group.permissions.map((permission) => (
                               <label
@@ -416,7 +451,10 @@ export function PermissionsPage({
                                     {permission.name}
                                   </span>
                                   <span className='text-muted-foreground'>
-                                    {permission.description}
+                                    {translatePermissionDescription(
+                                      t,
+                                      permission
+                                    )}
                                   </span>
                                 </span>
                               </label>
@@ -450,7 +488,9 @@ export function PermissionsPage({
                   <CardTitle>{user.name}</CardTitle>
                   <CardDescription>{user.email}</CardDescription>
                   <CardAction>
-                    <Badge variant='outline'>{user.status}</Badge>
+                    <Badge variant='outline'>
+                      {translateUserStatus(t, user.status)}
+                    </Badge>
                   </CardAction>
                 </CardHeader>
                 <CardContent className='flex flex-col gap-4'>

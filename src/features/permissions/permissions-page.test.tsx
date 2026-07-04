@@ -101,11 +101,19 @@ describe('PermissionsPage', () => {
       .element(getByRole('tab', { name: '用户角色' }))
       .toBeInTheDocument()
     await expect.element(getByText('系统角色')).toBeInTheDocument()
+    await expect
+      .element(getByText('拥有用户管理、权限配置和简历管理的完整访问权限。'))
+      .toBeInTheDocument()
     await expect.element(getByText('Review resumes.')).toBeInTheDocument()
     await expect
-      .element(getByRole('heading', { name: 'resumes' }))
+      .element(getByRole('heading', { name: '简历' }))
       .toBeInTheDocument()
     await expect.element(getByText('resumes:read')).toBeInTheDocument()
+    await expect.element(getByText('查看简历和简历文件。')).toBeInTheDocument()
+    await expect
+      .element(getByRole('heading', { exact: true, name: '权限' }))
+      .toBeInTheDocument()
+    await expect.element(getByText('管理角色和权限分配。')).toBeInTheDocument()
 
     await getByRole('tab', { name: '用户角色' }).click()
 
