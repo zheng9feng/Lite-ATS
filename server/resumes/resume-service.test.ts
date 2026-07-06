@@ -59,8 +59,17 @@ describe('createResumeService', () => {
   const getNow = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    storage.deleteObject.mockReset()
+    storage.ensureBucket.mockReset()
+    storage.getObject.mockReset()
+    storage.putObject.mockReset()
+    createId.mockReset()
+    createToken.mockReset()
+    getNow.mockReset()
+    storage.deleteObject.mockResolvedValue(undefined)
+    storage.ensureBucket.mockResolvedValue(undefined)
     storage.getObject.mockResolvedValue(Readable.from(['pdf']))
+    storage.putObject.mockResolvedValue(undefined)
     createId.mockReturnValue('resume-1')
     createToken.mockReturnValue('share-token')
     getNow.mockReturnValue(now)
@@ -148,6 +157,169 @@ describe('createResumeService', () => {
       jobPositionId: 'job-frontend',
     })
     expect(service.listResumes()[0]?.jobPositionId).toBe('job-frontend')
+  })
+
+  it('stores multiple uploaded PDFs with generated bulk applicant metadata', async () => {
+    const service = createResumeService({
+      bucketName: 'resumes',
+      createId: vi
+        .fn()
+        .mockReturnValueOnce('resume-1')
+        .mockReturnValueOnce('resume-2'),
+      createToken,
+      getNow,
+      publicApiUrl: 'http://localhost:3001',
+      repository: createMemoryResumeRepository(),
+      storage,
+    })
+
+    const resumes = await service.addResumes({
+      files: [
+        {
+          buffer: Buffer.from('pdf-one'),
+          mimetype: 'application/pdf',
+          originalname: 'Ava Chen.pdf',
+          size: 7,
+        },
+        {
+          buffer: Buffer.from('pdf-two'),
+          mimetype: 'application/pdf',
+          originalname: 'ben-smith.pdf',
+          size: 7,
+        },
+      ],
+      jobPositionId: 'job-frontend',
+      positionApplied: 'Frontend Engineer',
+    })
+
+    expect(resumes).toEqual([
+      expect.objectContaining({
+        applicant: {
+          email: 'ava-chen@bulk-upload.local',
+          name: 'Ava Chen',
+          positionApplied: 'Frontend Engineer',
+        },
+        fileName: 'Ava Chen.pdf',
+        id: 'resume-1',
+        jobPositionId: 'job-frontend',
+      }),
+      expect.objectContaining({
+        applicant: {
+          email: 'ben-smith@bulk-upload.local',
+          name: 'ben-smith',
+          positionApplied: 'Frontend Engineer',
+        },
+        fileName: 'ben-smith.pdf',
+        id: 'resume-2',
+        jobPositionId: 'job-frontend',
+      }),
+    ])
+    expect(storage.putObject).toHaveBeenCalledTimes(2)
+  })
+
+  it('stores bulk uploaded PDFs without a position applied', async () => {
+    const service = createResumeService({
+      bucketName: 'resumes',
+      createId,
+      createToken,
+      getNow,
+      publicApiUrl: 'http://localhost:3001',
+      repository: createMemoryResumeRepository(),
+      storage,
+    })
+
+    const resumes = await service.addResumes({
+      files: [
+        {
+          buffer: Buffer.from('pdf-one'),
+          mimetype: 'application/pdf',
+          originalname: 'Ava Chen.pdf',
+          size: 7,
+        },
+      ],
+    })
+
+    expect(resumes[0]).toEqual(
+      expect.objectContaining({
+        applicant: {
+          email: 'ava-chen@bulk-upload.local',
+          name: 'Ava Chen',
+          positionApplied: '',
+        },
+        jobPositionId: null,
+      })
+    )
+  })
+
+  it('rejects bulk uploads with more than twenty files', async () => {
+    const service = createResumeService({
+      bucketName: 'resumes',
+      createId,
+      createToken,
+      getNow,
+      publicApiUrl: 'http://localhost:3001',
+      repository: createMemoryResumeRepository(),
+      storage,
+    })
+
+    await expect(
+      service.addResumes({
+        files: Array.from({ length: 21 }, (_, index) => ({
+          buffer: Buffer.from('pdf'),
+          mimetype: 'application/pdf',
+          originalname: `candidate-${index + 1}.pdf`,
+          size: 3,
+        })),
+        jobPositionId: 'job-frontend',
+        positionApplied: 'Frontend Engineer',
+      })
+    ).rejects.toThrow('Upload between 1 and 20 resume files.')
+    expect(storage.putObject).not.toHaveBeenCalled()
+  })
+
+  it('rolls back uploaded objects when a later bulk upload fails', async () => {
+    storage.putObject
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('MinIO unavailable'))
+    const service = createResumeService({
+      bucketName: 'resumes',
+      createId: vi
+        .fn()
+        .mockReturnValueOnce('resume-1')
+        .mockReturnValueOnce('resume-2'),
+      createToken,
+      getNow,
+      publicApiUrl: 'http://localhost:3001',
+      repository: createMemoryResumeRepository(),
+      storage,
+    })
+
+    await expect(
+      service.addResumes({
+        files: [
+          {
+            buffer: Buffer.from('pdf-one'),
+            mimetype: 'application/pdf',
+            originalname: 'first.pdf',
+            size: 7,
+          },
+          {
+            buffer: Buffer.from('pdf-two'),
+            mimetype: 'application/pdf',
+            originalname: 'second.pdf',
+            size: 7,
+          },
+        ],
+        jobPositionId: 'job-frontend',
+        positionApplied: 'Frontend Engineer',
+      })
+    ).rejects.toThrow('MinIO unavailable')
+
+    expect(storage.deleteObject).toHaveBeenCalledWith({
+      bucketName: 'resumes',
+      objectName: 'resumes/resume-1/first.pdf',
+    })
+    expect(service.listResumes()).toEqual([])
   })
 
   it('creates an expiring public share link for a stored resume', async () => {

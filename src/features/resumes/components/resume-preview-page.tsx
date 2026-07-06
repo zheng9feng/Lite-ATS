@@ -179,7 +179,7 @@ function ResumeEditDialog({
   const [isLoadingJobPositions, setIsLoadingJobPositions] = useState(true)
   const fileRef = form.register('file')
   const selectedFiles = useWatch({ control: form.control, name: 'file' })
-  const selectedFileName = selectedFiles?.[0]?.name
+  const selectedFileLabel = selectedFiles?.[0]?.name
   const isSubmitting = form.formState.isSubmitting
 
   useEffect(() => {
@@ -339,7 +339,7 @@ function ResumeEditDialog({
                     accept='application/pdf,.pdf'
                     chooseLabel={t('resumes.form.chooseFile')}
                     noFileLabel={t('resumes.form.noFileChosen')}
-                    selectedFileName={selectedFileName}
+                    selectedFileLabel={selectedFileLabel}
                     {...fileRef}
                   />
                   <FormDescription>

@@ -5,7 +5,7 @@ import { useFormField } from '@/components/ui/form'
 type ResumeFileInputProps = Omit<React.ComponentProps<'input'>, 'type'> & {
   chooseLabel: string
   noFileLabel: string
-  selectedFileName?: string
+  selectedFileLabel?: string
 }
 
 function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
@@ -25,7 +25,7 @@ export function ResumeFileInput({
   disabled,
   noFileLabel,
   ref,
-  selectedFileName,
+  selectedFileLabel,
   ...props
 }: ResumeFileInputProps) {
   const inputRef = React.useRef<HTMLInputElement | null>(null)
@@ -74,7 +74,7 @@ export function ResumeFileInput({
         className='flex min-w-0 flex-1 items-center truncate px-3 text-muted-foreground'
         aria-live='polite'
       >
-        {selectedFileName ?? noFileLabel}
+        {selectedFileLabel ?? noFileLabel}
       </span>
     </div>
   )

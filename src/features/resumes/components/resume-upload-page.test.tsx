@@ -11,6 +11,7 @@ import { ResumeUploadPage } from './resume-upload-page'
 
 const navigate = vi.fn()
 const listActiveJobPositions = vi.fn()
+const uploadResumeBatch = vi.fn()
 const uploadResume = vi.fn()
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -22,6 +23,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 })
 
 vi.mock('../data/resume-api', () => ({
+  uploadResumeBatch: (...args: unknown[]) => uploadResumeBatch(...args),
   uploadResume: (...args: unknown[]) => uploadResume(...args),
 }))
 
@@ -98,6 +100,34 @@ describe('ResumeUploadPage', () => {
       previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
       uploadedAt: '2026-06-21T08:00:00.000Z',
     })
+    uploadResumeBatch.mockResolvedValue([
+      {
+        applicant: {
+          email: 'ava@bulk-upload.local',
+          name: 'Ava',
+          positionApplied: 'Frontend Engineer',
+        },
+        fileName: 'ava.pdf',
+        fileSize: 6,
+        fileType: 'application/pdf',
+        id: 'resume-1',
+        previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
+        uploadedAt: '2026-06-21T08:00:00.000Z',
+      },
+      {
+        applicant: {
+          email: 'ben@bulk-upload.local',
+          name: 'Ben',
+          positionApplied: 'Frontend Engineer',
+        },
+        fileName: 'ben.pdf',
+        fileSize: 6,
+        fileType: 'application/pdf',
+        id: 'resume-2',
+        previewUrl: 'http://localhost:3001/api/resumes/resume-2/file',
+        uploadedAt: '2026-06-21T08:01:00.000Z',
+      },
+    ])
   })
 
   async function selectJobPosition(
@@ -121,7 +151,9 @@ describe('ResumeUploadPage', () => {
       .element(getByText('请输入有效的邮箱地址。'))
       .toBeInTheDocument()
     await expect.element(getByText('请输入申请职位。')).toBeInTheDocument()
-    await expect.element(getByText('请上传 PDF 简历。')).toBeInTheDocument()
+    await expect
+      .element(getByText('请上传 PDF 简历或 ZIP 压缩包。'))
+      .toBeInTheDocument()
     expect(navigate).not.toHaveBeenCalled()
     expect(useResumeStore.getState().resumes).toEqual([])
   })
@@ -138,13 +170,15 @@ describe('ResumeUploadPage', () => {
     await userEvent.type(getByLabelText('邮箱'), 'ava@example.com')
     await selectJobPosition({ getByRole })
     await userEvent.upload(
-      getByLabelText('简历 PDF'),
+      getByLabelText('简历文件'),
       new File(['not pdf'], 'resume.txt', { type: 'text/plain' })
     )
     await expect.element(getByText('resume.txt')).toBeInTheDocument()
     await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
 
-    await expect.element(getByText('请上传 PDF 文件。')).toBeInTheDocument()
+    await expect
+      .element(getByText('请只选择 PDF 文件，或只选择一个 ZIP 压缩包。'))
+      .toBeInTheDocument()
     expect(navigate).not.toHaveBeenCalled()
     expect(useResumeStore.getState().resumes).toEqual([])
   })
@@ -158,7 +192,7 @@ describe('ResumeUploadPage', () => {
     await userEvent.type(getByLabelText('姓名'), 'Ava Chen')
     await userEvent.type(getByLabelText('邮箱'), 'ava@example.com')
     await selectJobPosition({ getByRole })
-    await userEvent.upload(getByLabelText('简历 PDF'), file)
+    await userEvent.upload(getByLabelText('简历文件'), file)
     await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
 
     expect(useResumeStore.getState().resumes).toHaveLength(1)
@@ -222,7 +256,7 @@ describe('ResumeUploadPage', () => {
     await userEvent.type(getByLabelText('姓名'), 'New Candidate')
     await userEvent.type(getByLabelText('邮箱'), 'new@example.com')
     await selectJobPosition({ getByRole })
-    await userEvent.upload(getByLabelText('简历 PDF'), file)
+    await userEvent.upload(getByLabelText('简历文件'), file)
     await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
 
     expect(useResumeStore.getState().resumes).toHaveLength(2)
@@ -230,5 +264,118 @@ describe('ResumeUploadPage', () => {
       useResumeStore.getState().resumes.map((resume) => resume.fileName)
     ).toEqual(['existing.pdf', 'new-candidate.pdf'])
     expect(navigate).toHaveBeenCalledWith({ to: '/resumes/preview' })
+  })
+
+  it('uploads multiple selected PDFs as a batch without applicant fields', async () => {
+    const ava = new File(['resume'], 'ava.pdf', {
+      type: 'application/pdf',
+    })
+    const ben = new File(['resume'], 'ben.pdf', {
+      type: 'application/pdf',
+    })
+    const { getByLabelText, getByRole } = await renderResumeUploadPage()
+
+    await userEvent.upload(getByLabelText('简历文件'), [ava, ben])
+    await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
+
+    expect(uploadResume).not.toHaveBeenCalled()
+    expect(uploadResumeBatch).toHaveBeenCalledWith({
+      files: [ava, ben],
+    })
+    expect(useResumeStore.getState().resumes).toHaveLength(2)
+    expect(navigate).toHaveBeenCalledWith({ to: '/resumes/preview' })
+  })
+
+  it('uploads multiple selected PDFs with optional position applied text', async () => {
+    const ava = new File(['resume'], 'ava.pdf', {
+      type: 'application/pdf',
+    })
+    const ben = new File(['resume'], 'ben.pdf', {
+      type: 'application/pdf',
+    })
+    const { getByLabelText, getByRole } = await renderResumeUploadPage()
+
+    await userEvent.upload(getByLabelText('简历文件'), [ava, ben])
+    await userEvent.type(getByLabelText('申请职位'), 'Talent Pool')
+    await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
+
+    expect(uploadResume).not.toHaveBeenCalled()
+    expect(uploadResumeBatch).toHaveBeenCalledWith({
+      files: [ava, ben],
+      positionApplied: 'Talent Pool',
+    })
+    expect(navigate).toHaveBeenCalledWith({ to: '/resumes/preview' })
+  })
+
+  it('uploads one ZIP archive as a batch', async () => {
+    uploadResumeBatch.mockResolvedValueOnce([
+      {
+        applicant: {
+          email: 'ava@bulk-upload.local',
+          name: 'Ava',
+          positionApplied: 'Frontend Engineer',
+        },
+        fileName: 'ava.pdf',
+        fileSize: 6,
+        fileType: 'application/pdf',
+        id: 'resume-1',
+        previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
+        uploadedAt: '2026-06-21T08:00:00.000Z',
+      },
+    ])
+    const archive = new File(['zip'], 'resumes.zip', {
+      type: 'application/zip',
+    })
+    const { getByLabelText, getByRole } = await renderResumeUploadPage()
+
+    await userEvent.upload(getByLabelText('简历文件'), archive)
+    await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
+
+    expect(uploadResumeBatch).toHaveBeenCalledWith({
+      files: [archive],
+    })
+    expect(useResumeStore.getState().resumes).toHaveLength(1)
+    expect(navigate).toHaveBeenCalledWith({ to: '/resumes/preview' })
+  })
+
+  it('rejects more than twenty selected PDFs', async () => {
+    const files = Array.from(
+      { length: 21 },
+      (_, index) =>
+        new File(['resume'], `candidate-${index + 1}.pdf`, {
+          type: 'application/pdf',
+        })
+    )
+    const { getByLabelText, getByRole, getByText } =
+      await renderResumeUploadPage()
+
+    await selectJobPosition({ getByRole })
+    await userEvent.upload(getByLabelText('简历文件'), files)
+    await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
+
+    await expect
+      .element(getByText('一次最多上传 20 个简历文件。'))
+      .toBeInTheDocument()
+    expect(uploadResumeBatch).not.toHaveBeenCalled()
+  })
+
+  it('rejects selecting ZIP archives together with PDF files', async () => {
+    const pdf = new File(['resume'], 'ava.pdf', {
+      type: 'application/pdf',
+    })
+    const archive = new File(['zip'], 'resumes.zip', {
+      type: 'application/zip',
+    })
+    const { getByLabelText, getByRole, getByText } =
+      await renderResumeUploadPage()
+
+    await selectJobPosition({ getByRole })
+    await userEvent.upload(getByLabelText('简历文件'), [archive, pdf])
+    await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
+
+    await expect
+      .element(getByText('请只选择 PDF 文件，或只选择一个 ZIP 压缩包。'))
+      .toBeInTheDocument()
+    expect(uploadResumeBatch).not.toHaveBeenCalled()
   })
 })

@@ -4,7 +4,9 @@ import express, {
   type Request,
   type Response,
 } from 'express'
+import JSZip from 'jszip'
 import multer from 'multer'
+import { posix as pathPosix } from 'node:path'
 import {
   type AuthenticatedRequest,
   optionalAuth,
@@ -48,6 +50,81 @@ function requirePdf(file?: Express.Multer.File) {
   }
 
   return file
+}
+
+function isZip(file?: Express.Multer.File) {
+  if (!file) return false
+
+  return (
+    file.mimetype === 'application/zip' ||
+    file.mimetype === 'application/x-zip-compressed' ||
+    file.originalname.toLowerCase().endsWith('.zip')
+  )
+}
+
+function readUploadedFiles(request: Request) {
+  const files = request.files as
+    | Record<string, Express.Multer.File[] | undefined>
+    | undefined
+
+  return {
+    archive: files?.archive ?? [],
+    resumes: files?.resumes ?? [],
+  }
+}
+
+function isIgnoredZipEntry(fileName: string) {
+  const normalizedName = fileName.replace(/\\/g, '/')
+  const baseName = pathPosix.basename(normalizedName)
+
+  return (
+    normalizedName.startsWith('__MACOSX/') ||
+    baseName === '.DS_Store' ||
+    baseName.startsWith('._')
+  )
+}
+
+async function extractPdfFilesFromZip(file: Express.Multer.File) {
+  if (!isZip(file)) {
+    throw new Error('Please upload a ZIP archive.')
+  }
+
+  let archive: JSZip
+
+  try {
+    archive = await JSZip.loadAsync(file.buffer)
+  } catch {
+    throw new Error('Please upload a valid ZIP archive.')
+  }
+
+  const extractedFiles: {
+    buffer: Buffer
+    mimetype: string
+    originalname: string
+    size: number
+  }[] = []
+
+  for (const entry of Object.values(archive.files)) {
+    if (entry.dir || isIgnoredZipEntry(entry.name)) {
+      continue
+    }
+
+    const fileName = pathPosix.basename(entry.name.replace(/\\/g, '/'))
+
+    if (!fileName.toLowerCase().endsWith('.pdf')) {
+      throw new Error('ZIP archives can only contain PDF files.')
+    }
+
+    const buffer = await entry.async('nodebuffer')
+    extractedFiles.push({
+      buffer,
+      mimetype: 'application/pdf',
+      originalname: fileName,
+      size: buffer.byteLength,
+    })
+  }
+
+  return extractedFiles
 }
 
 function setResumeFileHeaders(response: Response, resume: { fileName: string }) {
@@ -449,6 +526,63 @@ export function createServerApp({
         })
 
         response.status(201).json(resume)
+      } catch (error) {
+        sendError(response, error)
+      }
+    }
+  )
+
+  app.post(
+    '/api/resumes/bulk',
+    requirePermission('resumes:create'),
+    upload.fields([
+      { maxCount: 1, name: 'archive' },
+      { maxCount: 21, name: 'resumes' },
+    ]),
+    async (request: Request, response: Response) => {
+      try {
+        const { archive, resumes } = readUploadedFiles(request)
+
+        if (
+          (archive.length > 0 && resumes.length > 0) ||
+          (archive.length === 0 && resumes.length === 0)
+        ) {
+          throw new Error('Upload either PDF files or one ZIP archive.')
+        }
+
+        const jobPositionId = readString(request.body.jobPositionId)
+        const jobPosition = jobPositionId
+          ? jobPositionService.getJobPosition(jobPositionId)
+          : null
+        const positionApplied =
+          readString(request.body.positionApplied) || jobPosition?.title || ''
+        const files =
+          archive.length > 0
+            ? await extractPdfFilesFromZip(archive[0])
+            : resumes.map((file) => {
+                requirePdf(file)
+
+                return {
+                  buffer: file.buffer,
+                  mimetype: file.mimetype,
+                  originalname: file.originalname,
+                  size: file.size,
+                }
+              })
+
+        for (const file of files) {
+          if (file.size > 10 * 1024 * 1024) {
+            throw new Error('Each resume file must be 10 MB or smaller.')
+          }
+        }
+
+        const storedResumes = await resumeService.addResumes({
+          files,
+          jobPositionId: jobPosition?.id ?? null,
+          positionApplied,
+        })
+
+        response.status(201).json(storedResumes)
       } catch (error) {
         sendError(response, error)
       }

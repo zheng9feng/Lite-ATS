@@ -20,6 +20,7 @@ export type ResumeFile = {
 type ResumeStore = {
   resumes: ResumeFile[]
   addResume: (resume: ResumeFile) => void
+  addResumes: (resumes: ResumeFile[]) => void
   clearResumes: () => void
   removeResume: (resumeId: string) => void
   setResumes: (resumes: ResumeFile[]) => void
@@ -31,6 +32,11 @@ export const useResumeStore = create<ResumeStore>((set) => ({
   addResume: (resume) => {
     set((state) => ({
       resumes: [...state.resumes, resume],
+    }))
+  },
+  addResumes: (resumes) => {
+    set((state) => ({
+      resumes: [...state.resumes, ...resumes],
     }))
   },
   clearResumes: () => {

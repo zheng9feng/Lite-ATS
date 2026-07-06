@@ -101,6 +101,12 @@ type AddResumePayload = {
   jobPositionId?: string | null
 }
 
+type AddResumesPayload = {
+  files: UploadedResumeFile[]
+  jobPositionId?: string | null
+  positionApplied?: string
+}
+
 type UpdateResumePayload = {
   applicant: ResumeApplicant
   file?: UploadedResumeFile
@@ -122,6 +128,31 @@ function sanitizeFileName(fileName: string) {
   return normalized || fallback
 }
 
+function sanitizeEmailLocalPart(value: string) {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  return normalized || 'resume'
+}
+
+function removePdfExtension(fileName: string) {
+  return fileName.replace(/\.pdf$/i, '').trim()
+}
+
+function requirePdfFile(file: UploadedResumeFile) {
+  const isPdf =
+    file.mimetype === 'application/pdf' ||
+    file.originalname.toLowerCase().endsWith('.pdf')
+
+  if (!isPdf) {
+    throw new Error('Please upload a PDF file.')
+  }
+}
+
 function toPublicResume(record: StoredResumeRecord): StoredResume {
   const { objectName: _objectName, ...resume } = record
 
@@ -140,37 +171,128 @@ export function createResumeService({
 }: CreateResumeServiceOptions) {
   const normalizedPublicApiUrl = trimTrailingSlash(publicApiUrl)
 
-  async function addResume({ applicant, file, jobPositionId }: AddResumePayload) {
-    const id = createId()
-    const uploadedAt = getNow()
+  function createStoredResumeRecord({
+    applicant,
+    file,
+    id,
+    jobPositionId,
+    uploadedAt,
+  }: {
+    applicant: ResumeApplicant
+    file: UploadedResumeFile
+    id: string
+    jobPositionId: string | null
+    uploadedAt: Date
+  }): StoredResumeRecord {
     const fileName = normalizeUploadedFileName(file.originalname)
     const objectName = `resumes/${id}/${sanitizeFileName(fileName)}`
     const fileType = file.mimetype || 'application/pdf'
 
-    await storage.ensureBucket(bucketName)
-    await storage.putObject({
-      body: file.buffer,
-      bucketName,
-      contentType: fileType,
-      objectName,
-      size: file.size,
-    })
-
-    const resume: StoredResumeRecord = {
+    return {
       applicant,
       fileName,
       fileSize: file.size,
       fileType,
       id,
-      jobPositionId: jobPositionId ?? null,
+      jobPositionId,
       objectName,
       previewUrl: `${normalizedPublicApiUrl}/api/resumes/${id}/file`,
       uploadedAt: uploadedAt.toISOString(),
     }
+  }
+
+  async function addResume({ applicant, file, jobPositionId }: AddResumePayload) {
+    const id = createId()
+    const uploadedAt = getNow()
+    const resume = createStoredResumeRecord({
+      applicant,
+      file,
+      id,
+      jobPositionId: jobPositionId ?? null,
+      uploadedAt,
+    })
+
+    await storage.ensureBucket(bucketName)
+    await storage.putObject({
+      body: file.buffer,
+      bucketName,
+      contentType: resume.fileType,
+      objectName: resume.objectName,
+      size: file.size,
+    })
 
     repository.saveResume(resume)
 
     return toPublicResume(resume)
+  }
+
+  async function addResumes({
+    files,
+    jobPositionId = null,
+    positionApplied = '',
+  }: AddResumesPayload) {
+    if (files.length < 1 || files.length > 20) {
+      throw new Error('Upload between 1 and 20 resume files.')
+    }
+
+    for (const file of files) {
+      requirePdfFile(file)
+    }
+
+    const uploadedAt = getNow()
+    const records = files.map((file) => {
+      const fileName = normalizeUploadedFileName(file.originalname)
+      const applicantName = removePdfExtension(fileName) || fileName
+
+      return createStoredResumeRecord({
+        applicant: {
+          email: `${sanitizeEmailLocalPart(applicantName)}@bulk-upload.local`,
+          name: applicantName,
+          positionApplied: positionApplied.trim(),
+        },
+        file: {
+          ...file,
+          originalname: fileName,
+        },
+        id: createId(),
+        jobPositionId: jobPositionId ?? null,
+        uploadedAt,
+      })
+    })
+    const uploadedRecords: StoredResumeRecord[] = []
+
+    await storage.ensureBucket(bucketName)
+
+    try {
+      for (const [index, record] of records.entries()) {
+        const file = files[index]
+
+        await storage.putObject({
+          body: file.buffer,
+          bucketName,
+          contentType: record.fileType,
+          objectName: record.objectName,
+          size: file.size,
+        })
+        uploadedRecords.push(record)
+      }
+    } catch (error) {
+      await Promise.allSettled(
+        uploadedRecords.map((record) =>
+          storage.deleteObject({
+            bucketName,
+            objectName: record.objectName,
+          })
+        )
+      )
+      throw error
+    }
+
+    for (const record of records) {
+      repository.saveResume(record)
+    }
+
+    return records.map((resume) => toPublicResume(resume))
   }
 
   async function updateResume(
@@ -352,6 +474,7 @@ export function createResumeService({
 
   return {
     addResume,
+    addResumes,
     createShareLink,
     deleteResume,
     getResumeSummary,

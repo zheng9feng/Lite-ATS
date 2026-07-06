@@ -6,6 +6,7 @@ import {
   fetchResumeFile,
   listResumes,
   updateResume,
+  uploadResumeBatch,
   uploadResume,
 } from './resume-api'
 
@@ -61,6 +62,82 @@ describe('resume API client', () => {
     expect(resume.previewUrl).toBe(
       'http://localhost:3001/api/resumes/resume-1/file'
     )
+  })
+
+  it('uploads a batch of resume PDFs to the API', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => [
+        {
+          applicant: {
+            email: 'ava@bulk-upload.local',
+            name: 'Ava',
+            positionApplied: 'Frontend Engineer',
+          },
+          fileName: 'ava.pdf',
+          fileSize: 3,
+          fileType: 'application/pdf',
+          id: 'resume-1',
+          previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
+          uploadedAt: '2026-06-21T08:00:00.000Z',
+        },
+      ],
+    })
+
+    const file = new File(['pdf'], 'ava.pdf', { type: 'application/pdf' })
+    const resumes = await uploadResumeBatch({
+      files: [file],
+      jobPositionId: 'job-frontend',
+    })
+    const body = fetch.mock.calls[0]?.[1]?.body as FormData
+
+    expect(fetch).toHaveBeenCalledWith('/api/resumes/bulk', {
+      body: expect.any(FormData),
+      headers: {
+        Authorization: 'Bearer session-token',
+      },
+      method: 'POST',
+    })
+    expect(body.get('jobPositionId')).toBe('job-frontend')
+    expect(body.getAll('resumes')).toEqual([file])
+    expect(resumes).toHaveLength(1)
+  })
+
+  it('uploads optional position applied text with a resume batch', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    })
+
+    const file = new File(['pdf'], 'ava.pdf', { type: 'application/pdf' })
+    await uploadResumeBatch({
+      files: [file],
+      positionApplied: 'Talent Pool',
+    })
+    const body = fetch.mock.calls[0]?.[1]?.body as FormData
+
+    expect(body.get('jobPositionId')).toBeNull()
+    expect(body.get('positionApplied')).toBe('Talent Pool')
+    expect(body.getAll('resumes')).toEqual([file])
+  })
+
+  it('uploads a ZIP archive to the bulk resume API', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    })
+
+    const archive = new File(['zip'], 'resumes.zip', {
+      type: 'application/zip',
+    })
+    await uploadResumeBatch({
+      files: [archive],
+      jobPositionId: 'job-frontend',
+    })
+    const body = fetch.mock.calls[0]?.[1]?.body as FormData
+
+    expect(body.get('archive')).toBe(archive)
+    expect(body.getAll('resumes')).toEqual([])
   })
 
   it('creates a limited-time share link for a stored resume', async () => {

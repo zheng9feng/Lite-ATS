@@ -36,40 +36,77 @@ import {
   listActiveJobPositions,
   type JobPosition,
 } from '@/features/job-positions/data/job-positions-api'
-import { uploadResume } from '../data/resume-api'
+import { uploadResume, uploadResumeBatch } from '../data/resume-api'
 import { useResumeStore } from '../data/resume-store'
 import { ResumeFileInput } from './resume-file-input'
 
 function createResumeUploadFormSchema(t: TFunction) {
-  return z.object({
-    email: z
-      .string()
-      .trim()
-      .email({ message: t('resumes.form.validation.email') }),
-    file: z
-      .instanceof(FileList)
-      .refine((files) => files.length > 0, {
-        message: t('resumes.form.validation.pdfResume'),
-      })
-      .refine((files) => isPdf(files[0]), {
-        message: t('resumes.form.validation.pdfFile'),
+  return z
+    .object({
+      email: z.string().trim().optional().default(''),
+      file: z.instanceof(FileList).refine((files) => files.length > 0, {
+        message: t('resumes.form.validation.resumeFiles'),
       }),
-    name: z
-      .string()
-      .trim()
-      .min(1, {
-        message: t('resumes.form.validation.applicantName'),
-      }),
-    jobPositionId: z
-      .string()
-      .trim()
-      .min(1, {
-        message: t('resumes.form.validation.positionApplied'),
-      }),
-  })
+      jobPositionId: z.string().trim().optional().default(''),
+      name: z.string().trim().optional().default(''),
+      positionApplied: z.string().trim().optional().default(''),
+    })
+    .superRefine((values, context) => {
+      const files = fileListToArray(values.file)
+      const isBulkUpload = files.length > 0 && !isSinglePdfUpload(files)
+
+      if (files.length > 20) {
+        context.addIssue({
+          code: 'custom',
+          message: t('resumes.form.validation.maxFiles'),
+          path: ['file'],
+        })
+      }
+
+      if (!isValidResumeFileSelection(files)) {
+        context.addIssue({
+          code: 'custom',
+          message: t('resumes.form.validation.fileSelection'),
+          path: ['file'],
+        })
+      }
+
+      if (isBulkUpload) {
+        return
+      }
+
+      if (!values.jobPositionId.trim()) {
+        context.addIssue({
+          code: 'custom',
+          message: t('resumes.form.validation.positionApplied'),
+          path: ['jobPositionId'],
+        })
+      }
+
+      if (!values.name.trim()) {
+        context.addIssue({
+          code: 'custom',
+          message: t('resumes.form.validation.applicantName'),
+          path: ['name'],
+        })
+      }
+
+      if (!z.string().email().safeParse(values.email.trim()).success) {
+        context.addIssue({
+          code: 'custom',
+          message: t('resumes.form.validation.email'),
+          path: ['email'],
+        })
+      }
+    })
 }
 
-type ResumeUploadForm = z.infer<ReturnType<typeof createResumeUploadFormSchema>>
+type ResumeUploadFormInput = z.input<
+  ReturnType<typeof createResumeUploadFormSchema>
+>
+type ResumeUploadForm = z.output<
+  ReturnType<typeof createResumeUploadFormSchema>
+>
 
 function isPdf(file?: File) {
   if (!file) return false
@@ -79,26 +116,64 @@ function isPdf(file?: File) {
   )
 }
 
+function isZip(file?: File) {
+  if (!file) return false
+
+  return (
+    file.type === 'application/zip' ||
+    file.type === 'application/x-zip-compressed' ||
+    file.name.toLowerCase().endsWith('.zip')
+  )
+}
+
+function fileListToArray(files?: FileList) {
+  return Array.from(files ?? [])
+}
+
+function isSinglePdfUpload(files: File[]) {
+  return files.length === 1 && isPdf(files[0])
+}
+
+function isValidResumeFileSelection(files: File[]) {
+  const zipCount = files.filter((file) => isZip(file)).length
+
+  if (zipCount > 0) {
+    return files.length === 1 && zipCount === 1
+  }
+
+  return files.every((file) => isPdf(file))
+}
+
 export function ResumeUploadPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const addResume = useResumeStore((state) => state.addResume)
+  const addResumes = useResumeStore((state) => state.addResumes)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const formSchema = useMemo(() => createResumeUploadFormSchema(t), [t])
-  const form = useForm<ResumeUploadForm>({
+  const form = useForm<ResumeUploadFormInput, unknown, ResumeUploadForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
       file: undefined,
       jobPositionId: '',
       name: '',
+      positionApplied: '',
     },
   })
   const [jobPositions, setJobPositions] = useState<JobPosition[]>([])
   const [isLoadingJobPositions, setIsLoadingJobPositions] = useState(true)
   const fileRef = form.register('file')
   const selectedFiles = useWatch({ control: form.control, name: 'file' })
-  const selectedFileName = selectedFiles?.[0]?.name
+  const selectedFileArray = fileListToArray(selectedFiles)
+  const selectedFileLabel =
+    selectedFileArray.length > 1
+      ? t('resumes.form.selectedFileCount', {
+          count: selectedFileArray.length,
+        })
+      : selectedFileArray[0]?.name
+  const isBulkUpload =
+    selectedFileArray.length > 0 && !isSinglePdfUpload(selectedFileArray)
 
   useEffect(() => {
     let isCurrent = true
@@ -132,25 +207,50 @@ export function ResumeUploadPage() {
     setSubmitError(null)
 
     try {
-      const jobPosition = jobPositions.find(
-        (position) => position.id === values.jobPositionId
-      )
+      const files = fileListToArray(values.file)
 
-      if (!jobPosition) {
-        throw new Error(t('resumes.form.validation.positionApplied'))
+      if (isSinglePdfUpload(files)) {
+        const jobPosition = jobPositions.find(
+          (position) => position.id === values.jobPositionId
+        )
+
+        if (!jobPosition) {
+          throw new Error(t('resumes.form.validation.positionApplied'))
+        }
+
+        const resume = await uploadResume({
+          applicant: {
+            email: values.email.trim(),
+            name: values.name.trim(),
+            positionApplied: jobPosition.title,
+          },
+          file: files[0],
+          jobPositionId: jobPosition.id,
+        })
+
+        addResume(resume)
+      } else {
+        const jobPosition = values.jobPositionId
+          ? jobPositions.find(
+              (position) => position.id === values.jobPositionId
+            )
+          : undefined
+
+        if (values.jobPositionId && !jobPosition) {
+          throw new Error(t('resumes.form.validation.positionApplied'))
+        }
+
+        const positionApplied = values.positionApplied.trim()
+        const payload = {
+          files,
+          ...(jobPosition ? { jobPositionId: jobPosition.id } : {}),
+          ...(positionApplied ? { positionApplied } : {}),
+        }
+        const resumes = await uploadResumeBatch(payload)
+
+        addResumes(resumes)
       }
 
-      const resume = await uploadResume({
-        applicant: {
-          email: values.email.trim(),
-          name: values.name.trim(),
-          positionApplied: jobPosition.title,
-        },
-        file: values.file[0],
-        jobPositionId: jobPosition.id,
-      })
-
-      addResume(resume)
       navigate({ to: '/resumes/preview' })
     } catch (error) {
       setSubmitError(
@@ -246,40 +346,67 @@ export function ResumeUploadPage() {
                     )}
                   />
                 </div>
-                <FormField
-                  control={form.control}
-                  name='jobPositionId'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('resumes.form.positionApplied')}</FormLabel>
-                      <SelectDropdown
-                        className='w-full'
-                        defaultValue={field.value}
-                        disabled={isLoadingJobPositions}
-                        isControlled
-                        isPending={isLoadingJobPositions}
-                        items={jobPositions.map((position) => ({
-                          label: position.title,
-                          value: position.id,
-                        }))}
-                        onValueChange={field.onChange}
-                        placeholder={t('resumes.form.positionPlaceholder')}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {isBulkUpload ? (
+                  <FormField
+                    control={form.control}
+                    name='positionApplied'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t('resumes.form.positionApplied')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('resumes.form.positionPlaceholder')}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t('resumes.form.positionOptionalDescription')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name='jobPositionId'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t('resumes.form.positionApplied')}
+                        </FormLabel>
+                        <SelectDropdown
+                          className='w-full'
+                          defaultValue={field.value}
+                          disabled={isLoadingJobPositions}
+                          isControlled
+                          isPending={isLoadingJobPositions}
+                          items={jobPositions.map((position) => ({
+                            label: position.title,
+                            value: position.id,
+                          }))}
+                          onValueChange={field.onChange}
+                          placeholder={t('resumes.form.positionPlaceholder')}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={form.control}
                   name='file'
                   render={() => (
                     <FormItem>
-                      <FormLabel>{t('resumes.form.resumePdf')}</FormLabel>
+                      <FormLabel>{t('resumes.form.resumeFiles')}</FormLabel>
                       <ResumeFileInput
-                        accept='application/pdf,.pdf'
+                        accept='application/pdf,.pdf,application/zip,.zip'
                         chooseLabel={t('resumes.form.chooseFile')}
+                        multiple
                         noFileLabel={t('resumes.form.noFileChosen')}
-                        selectedFileName={selectedFileName}
+                        selectedFileLabel={selectedFileLabel}
                         {...fileRef}
                       />
                       <FormDescription>

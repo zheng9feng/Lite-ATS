@@ -14,6 +14,12 @@ type UploadResumePayload = {
   jobPositionId?: string | null
 }
 
+type UploadResumeBatchPayload = {
+  files: File[]
+  jobPositionId?: string | null
+  positionApplied?: string
+}
+
 type UpdateResumePayload = {
   applicant: ResumeApplicant
   file?: File
@@ -75,6 +81,45 @@ export async function uploadResume({
   })
 
   return parseApiResponse<ResumeFile>(response)
+}
+
+function isZipFile(file: File) {
+  return (
+    file.type === 'application/zip' ||
+    file.type === 'application/x-zip-compressed' ||
+    file.name.toLowerCase().endsWith('.zip')
+  )
+}
+
+export async function uploadResumeBatch({
+  files,
+  jobPositionId,
+  positionApplied,
+}: UploadResumeBatchPayload): Promise<ResumeFile[]> {
+  const body = new FormData()
+  if (jobPositionId) {
+    body.append('jobPositionId', jobPositionId)
+  }
+  const trimmedPositionApplied = positionApplied?.trim()
+  if (trimmedPositionApplied) {
+    body.append('positionApplied', trimmedPositionApplied)
+  }
+
+  if (files.length === 1 && isZipFile(files[0])) {
+    body.append('archive', files[0])
+  } else {
+    for (const file of files) {
+      body.append('resumes', file)
+    }
+  }
+
+  const response = await fetch(apiUrl('/api/resumes/bulk'), {
+    body,
+    headers: authHeaders(),
+    method: 'POST',
+  })
+
+  return parseApiResponse<ResumeFile[]>(response)
 }
 
 export async function listResumes(): Promise<ResumeFile[]> {

@@ -73,6 +73,55 @@ describe('useResumeStore', () => {
     ).toEqual(['first.pdf', 'second.pdf'])
   })
 
+  it('appends a batch of resume metadata without replacing existing rows', () => {
+    useResumeStore.getState().addResume({
+      applicant: {
+        email: 'existing@example.com',
+        name: 'Existing Candidate',
+        positionApplied: 'Designer',
+      },
+      fileName: 'existing.pdf',
+      fileSize: 5,
+      fileType: 'application/pdf',
+      id: 'existing-resume',
+      previewUrl: 'http://localhost:3001/api/resumes/existing-resume/file',
+      uploadedAt: '2026-06-21T07:00:00.000Z',
+    })
+
+    useResumeStore.getState().addResumes([
+      {
+        applicant: {
+          email: 'first@bulk-upload.local',
+          name: 'First',
+          positionApplied: 'Frontend Engineer',
+        },
+        fileName: 'first.pdf',
+        fileSize: 6,
+        fileType: 'application/pdf',
+        id: 'first-resume',
+        previewUrl: 'http://localhost:3001/api/resumes/first-resume/file',
+        uploadedAt: '2026-06-21T08:00:00.000Z',
+      },
+      {
+        applicant: {
+          email: 'second@bulk-upload.local',
+          name: 'Second',
+          positionApplied: 'Frontend Engineer',
+        },
+        fileName: 'second.pdf',
+        fileSize: 7,
+        fileType: 'application/pdf',
+        id: 'second-resume',
+        previewUrl: 'http://localhost:3001/api/resumes/second-resume/file',
+        uploadedAt: '2026-06-21T08:01:00.000Z',
+      },
+    ])
+
+    expect(
+      useResumeStore.getState().resumes.map((resume) => resume.fileName)
+    ).toEqual(['existing.pdf', 'first.pdf', 'second.pdf'])
+  })
+
   it('clears all stored resume metadata', () => {
     useResumeStore.getState().addResume({
       applicant: {

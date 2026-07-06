@@ -514,15 +514,21 @@ export const resources = {
           emailPlaceholder: 'applicant@example.com',
           noFileChosen: '未选择文件',
           positionApplied: '申请职位',
+          positionOptionalDescription: '批量上传时可留空。',
           positionPlaceholder: '前端工程师',
           replacementPdf: '替换 PDF',
+          resumeFiles: '简历文件',
           resumePdf: '简历 PDF',
+          selectedFileCount: '已选择 {{count}} 个文件',
           validation: {
             applicantName: '请输入申请人姓名。',
             email: '请输入有效的邮箱地址。',
+            fileSelection: '请只选择 PDF 文件，或只选择一个 ZIP 压缩包。',
+            maxFiles: '一次最多上传 20 个简历文件。',
             pdfFile: '请上传 PDF 文件。',
             pdfResume: '请上传 PDF 简历。',
             positionApplied: '请输入申请职位。',
+            resumeFiles: '请上传 PDF 简历或 ZIP 压缩包。',
           },
         },
         preview: {
@@ -581,7 +587,8 @@ export const resources = {
           errors: {
             submit: '无法上传此简历。请重试。',
           },
-          fileDescription: '仅支持 PDF 文件在线预览。',
+          fileDescription:
+            '可选择最多 20 个 PDF 文件，或选择一个包含最多 20 个 PDF 的 ZIP 压缩包。',
           submit: '上传并预览',
           submitting: '正在上传...',
           subtitle: '上传 PDF 简历以在线预览。',
@@ -1120,15 +1127,21 @@ export const resources = {
           emailPlaceholder: 'applicant@example.com',
           noFileChosen: 'No file chosen',
           positionApplied: 'Position applied for',
+          positionOptionalDescription: 'Optional for bulk uploads.',
           positionPlaceholder: 'Frontend Engineer',
           replacementPdf: 'Replacement PDF',
+          resumeFiles: 'Resume files',
           resumePdf: 'Resume PDF',
+          selectedFileCount: '{{count}} files selected',
           validation: {
             applicantName: 'Please enter the applicant name.',
             email: 'Please enter a valid email address.',
+            fileSelection: 'Choose only PDF files, or choose one ZIP archive.',
+            maxFiles: 'Upload up to 20 resume files at once.',
             pdfFile: 'Please upload a PDF file.',
             pdfResume: 'Please upload a PDF resume.',
             positionApplied: 'Please enter the position applied for.',
+            resumeFiles: 'Please upload PDF resumes or a ZIP archive.',
           },
         },
         preview: {
@@ -1189,7 +1202,8 @@ export const resources = {
           errors: {
             submit: 'Unable to upload this resume. Please try again.',
           },
-          fileDescription: 'Only PDF files are supported for online preview.',
+          fileDescription:
+            'Choose up to 20 PDF files, or one ZIP archive containing up to 20 PDFs.',
           submit: 'Upload and preview',
           submitting: 'Uploading...',
           subtitle: 'Upload a PDF resume to preview it online.',
