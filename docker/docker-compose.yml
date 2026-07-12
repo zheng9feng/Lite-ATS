@@ -1,7 +1,10 @@
+name: lite-ats
+
 services:
   app:
     build:
-      context: .
+      context: ..
+      dockerfile: docker/Dockerfile
     image: lite-ats:local
     restart: unless-stopped
     depends_on:

@@ -107,7 +107,7 @@ Change those credentials before sharing a local database or deploying the API.
 Build the application image and start Lite ATS with MinIO:
 
 ```bash
-docker compose up --build -d
+docker compose -f docker/docker-compose.yml up --build -d
 ```
 
 Open `http://localhost:3001`. The MinIO console is available at
@@ -122,9 +122,9 @@ so generated resume links remain reachable.
 Check the deployment or stop it with:
 
 ```bash
-docker compose ps
-docker compose logs -f app
-docker compose down
+docker compose -f docker/docker-compose.yml ps
+docker compose -f docker/docker-compose.yml logs -f app
+docker compose -f docker/docker-compose.yml down
 ```
 
 ## Environment Variables
