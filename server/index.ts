@@ -13,6 +13,7 @@ import { createSqliteResumeRepository } from './resumes/sqlite-resume-repository
 loadServerEnv()
 
 const {
+  appStaticDirectory,
   bucketName,
   databasePath,
   localAdmin,
@@ -43,6 +44,7 @@ if (localAdmin.email && localAdmin.password) {
 }
 
 const app = createServerApp({
+  staticDirectory: appStaticDirectory,
   authService,
   jobPositionService: createJobPositionService({
     repository: createSqliteJobPositionRepository({ databasePath }),

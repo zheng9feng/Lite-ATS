@@ -1,0 +1,60 @@
+services:
+  app:
+    build:
+      context: .
+    image: lite-ats:local
+    restart: unless-stopped
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      APP_STATIC_DIRECTORY: /app/dist
+      LOCAL_ADMIN_EMAIL: ${LOCAL_ADMIN_EMAIL:-admin@example.com}
+      LOCAL_ADMIN_NAME: ${LOCAL_ADMIN_NAME:-Local Admin}
+      LOCAL_ADMIN_PASSWORD: ${LOCAL_ADMIN_PASSWORD:-password123}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-resumes}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_USE_SSL: "false"
+      RESUME_API_PORT: 3001
+      RESUME_API_PUBLIC_URL: ${RESUME_API_PUBLIC_URL:-http://localhost:3001}
+      RESUME_DATABASE_PATH: /app/server/.data/resumes.sqlite
+      RESUME_SHARE_TTL_MINUTES: ${RESUME_SHARE_TTL_MINUTES:-60}
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://localhost:3001/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    ports:
+      - ${APP_PORT:-3001}:3001
+    volumes:
+      - lite-ats-data:/app/server/.data
+
+  minio:
+    image: quay.io/minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+    healthcheck:
+      test: [CMD, curl, -f, http://localhost:9000/minio/health/live]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    ports:
+      - ${MINIO_CONSOLE_PORT:-9001}:9001
+    volumes:
+      - minio-data:/data
+
+volumes:
+  lite-ats-data:
+  minio-data:

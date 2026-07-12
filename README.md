@@ -102,12 +102,39 @@ Password: password123
 
 Change those credentials before sharing a local database or deploying the API.
 
+## Docker Compose
+
+Build the application image and start Lite ATS with MinIO:
+
+```bash
+docker compose up --build -d
+```
+
+Open `http://localhost:3001`. The MinIO console is available at
+`http://localhost:9001`. Compose stores SQLite and MinIO data in named volumes,
+so both survive container restarts.
+
+Compose reads `.env` automatically. Change `LOCAL_ADMIN_PASSWORD` and the
+MinIO credentials before exposing the deployment. If you set `APP_PORT` to a
+port other than `3001`, set `RESUME_API_PUBLIC_URL` to the matching public URL
+so generated resume links remain reachable.
+
+Check the deployment or stop it with:
+
+```bash
+docker compose ps
+docker compose logs -f app
+docker compose down
+```
+
 ## Environment Variables
 
 | Variable                     | Default                       | Purpose                                                             |
 | ---------------------------- | ----------------------------- | ------------------------------------------------------------------- |
 | `VITE_RESUME_API_BASE_URL`   | empty                         | Optional browser API origin. Leave empty when using the Vite proxy. |
 | `VITE_CLERK_PUBLISHABLE_KEY` | empty                         | Optional Clerk publishable key for the separate Clerk demo routes.  |
+| `APP_PORT`                   | `3001`                        | Host port published by Docker Compose.                              |
+| `APP_STATIC_DIRECTORY`       | empty                         | Built frontend directory served by Express in production.           |
 | `RESUME_API_PORT`            | `3001`                        | Express API port.                                                   |
 | `RESUME_API_PUBLIC_URL`      | `http://localhost:3001`       | Public URL used when generating resume preview and share links.     |
 | `RESUME_DATABASE_PATH`       | `server/.data/resumes.sqlite` | SQLite database path.                                               |

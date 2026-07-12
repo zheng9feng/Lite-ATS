@@ -6,7 +6,7 @@ import express, {
 } from 'express'
 import JSZip from 'jszip'
 import multer from 'multer'
-import { posix as pathPosix } from 'node:path'
+import path, { posix as pathPosix } from 'node:path'
 import {
   type AuthenticatedRequest,
   optionalAuth,
@@ -27,6 +27,7 @@ type CreateServerAppOptions = {
   authService: AuthService
   jobPositionService: JobPositionService
   resumeService: ResumeService
+  staticDirectory?: string
 }
 
 const upload = multer({
@@ -173,6 +174,7 @@ export function createServerApp({
   authService,
   jobPositionService,
   resumeService,
+  staticDirectory,
 }: CreateServerAppOptions) {
   const app = express()
 
@@ -682,6 +684,24 @@ export function createServerApp({
       sendError(response, error)
     }
   })
+
+  if (staticDirectory) {
+    const resolvedStaticDirectory = path.resolve(staticDirectory)
+
+    app.use(express.static(resolvedStaticDirectory))
+    app.use((request, response, next) => {
+      if (
+        request.method !== 'GET' ||
+        request.path.startsWith('/api/') ||
+        !request.accepts('html')
+      ) {
+        next()
+        return
+      }
+
+      response.sendFile(path.join(resolvedStaticDirectory, 'index.html'))
+    })
+  }
 
   app.use(
     (

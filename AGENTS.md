@@ -2,28 +2,33 @@
 
 ## Project Structure & Module Organization
 
-This is a Vite, React, TypeScript admin dashboard with a small local Express
-API for resume storage and sharing. Application code lives in `src/`.
+This is a Vite, React, TypeScript admin dashboard for local applicant tracking,
+with an Express API for authentication, RBAC, job positions, and resume
+management. Application code lives in `src/`.
 File-based routes are under `src/routes/`, shared UI primitives in
 `src/components/ui/`, layout in `src/components/layout/`, and feature modules
 in `src/features/<domain>/`. Shared utilities are in `src/lib/`, hooks in
 `src/hooks/`, stores in `src/stores/`, providers in `src/context/`, styles in
 `src/styles/`, and static assets in `public/`.
 
-The local API lives in `server/`. Resume uploads are stored in MinIO through
-the Express API, with in-memory metadata and share tokens for local
-development. Frontend tests are colocated as `*.test.ts` or `*.test.tsx` under
-`src/`; server tests live under `server/` and use `vitest.server.config.ts`.
+The local API lives in `server/`. Local email/password authentication, users,
+roles, permissions, sessions, job positions, resume metadata, and share tokens
+are persisted in SQLite. Uploaded PDFs are stored in MinIO. Server modules are
+grouped under `server/auth/`, `server/job-positions/`, and `server/resumes/`;
+database migrations live under `server/resumes/migrations/`. Frontend tests are
+colocated as `*.test.ts` or `*.test.tsx` under `src/`; server tests live under
+`server/` and use `vitest.server.config.ts`.
 
 ## Build, Test, and Development Commands
 
 - `pnpm install` installs dependencies from `pnpm-lock.yaml`.
 - `pnpm run dev` starts the Vite development server.
-- `pnpm run dev:api` starts the local Express resume API.
+- `pnpm run dev:api` starts the local Express API in watch mode.
 - `pnpm run build` type-checks with `tsc -b` and builds the app.
 - `pnpm run preview` serves the production build locally.
 - `pnpm run lint` runs ESLint across the repository.
-- `pnpm run format:check` checks Prettier formatting.
+- `pnpm run format:check` checks Prettier formatting; `pnpm run format` writes
+  formatting changes.
 - `pnpm run test` runs Vitest browser tests headlessly.
 - `pnpm run test:server` runs Node-based server tests.
 - `pnpm run test:coverage` runs tests with V8 coverage.
@@ -32,12 +37,18 @@ development. Frontend tests are colocated as `*.test.ts` or `*.test.tsx` under
 Use pnpm for all scripts. If browser tests fail because Chromium is missing, run
 `pnpm run test:browser:install`.
 
-For local resume upload and share-link flows, run MinIO on `localhost:9000`,
-start the API with `pnpm run dev:api`, then start the app with
-`pnpm run dev`. The API reads `.env` and supports either
-`MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` or MinIO's standard
-`MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` names. Keep `RESUME_API_PUBLIC_URL`
-aligned with the URL users should open for public share links.
+For local development, copy `.env.example` to `.env`, run MinIO on
+`localhost:9000`, start the API with `pnpm run dev:api`, then start the app
+with `pnpm run dev`. The API runs SQLite migrations automatically and seeds a
+local admin when `LOCAL_ADMIN_EMAIL` and `LOCAL_ADMIN_PASSWORD` are set. The
+Vite server proxies `/api` to `http://localhost:3001`, so
+`VITE_RESUME_API_BASE_URL` can stay empty for normal local development.
+
+The API accepts either `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` or MinIO's
+standard `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` names. Keep
+`RESUME_API_PUBLIC_URL` aligned with the public API origin used for resume
+preview and share links. SQLite defaults to `server/.data/resumes.sqlite`; use
+`RESUME_DATABASE_PATH` to change it.
 
 ## Coding Style & Naming Conventions
 
@@ -59,8 +70,11 @@ dialogs. Coverage excludes generated routes, Shadcn UI primitives, assets, and
 test helpers by default.
 
 Server tests use Node mode through `vitest.server.config.ts`. Add focused
-server tests when changing Express handlers, MinIO storage behavior, filename
-encoding, share-token expiry, or server configuration parsing.
+server tests when changing Express handlers, authentication or authorization,
+SQLite repositories or migrations, job-position behavior, MinIO storage,
+filename encoding, bulk PDF/ZIP uploads, share-token expiry, or server
+configuration parsing. Permission-protected endpoints should cover
+unauthenticated, unauthorized, and authorized cases where applicable.
 
 ## Commit & Pull Request Guidelines
 
@@ -75,7 +89,10 @@ changes. Note route, auth, or configuration impacts explicitly.
 
 ## Security & Configuration Tips
 
-Do not commit secrets or local environment files. Clerk-related auth code is
-present, so keep keys local and document new required variables in PRs. MinIO
-credentials must stay local; update `.env.example` when adding or renaming
-resume API configuration.
+Do not commit secrets, local environment files, SQLite databases, or MinIO
+data. Local email/password authentication is the primary auth path; Clerk code
+remains for separate demo routes. Keep Clerk keys, local-admin credentials, and
+MinIO credentials local, and do not share the default development admin
+password outside a disposable local environment. Update `.env.example` when
+adding or renaming API configuration, and document new required variables in
+PRs.

@@ -30,6 +30,7 @@ export function resolveServerConfig(env: ServerEnv = process.env) {
   const apiPort = readNumber(env.RESUME_API_PORT, 3001)
 
   return {
+    appStaticDirectory: env.APP_STATIC_DIRECTORY ?? '',
     bucketName: env.MINIO_BUCKET ?? 'resumes',
     databasePath: env.RESUME_DATABASE_PATH ?? 'server/.data/resumes.sqlite',
     localAdmin: {
