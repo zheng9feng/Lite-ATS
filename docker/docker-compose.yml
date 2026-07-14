@@ -44,7 +44,7 @@ services:
       - lite-ats-data:/app/server/.data
 
   minio:
-    image: quay.io/minio:latest
+    image: quay.io/minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
