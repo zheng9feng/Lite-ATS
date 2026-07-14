@@ -110,11 +110,12 @@ Build the application image and start Lite ATS with MinIO:
 docker compose -f docker/docker-compose.yml up --build -d
 ```
 
-For a local deployment, open `http://localhost:3001`. For a remote deployment,
-open `http://<server-ip>:3001` and allow the configured `APP_PORT` through the
-server firewall, or route that port through a reverse proxy. The MinIO console
-is available on port `9001`. Compose stores SQLite and MinIO data in named
-volumes, so both survive container restarts.
+For a local deployment, open `http://localhost:<APP_PORT>`. For a remote
+deployment, open `http://<server-ip>:<APP_PORT>` and allow the configured
+`APP_PORT` through the server firewall, or route that port through a reverse
+proxy. The default application port is `3001`. The MinIO console is available
+on port `9001`. Compose stores SQLite and MinIO data in named volumes, so both
+survive container restarts.
 
 Compose reads `.env` automatically. Change `LOCAL_ADMIN_PASSWORD` and the
 MinIO credentials before exposing the deployment. Set `RESUME_API_PUBLIC_URL`
@@ -136,10 +137,10 @@ docker compose -f docker/docker-compose.yml down
 | ---------------------------- | ----------------------------- | ------------------------------------------------------------------- |
 | `VITE_RESUME_API_BASE_URL`   | empty                         | Optional browser API origin. Leave empty when using the Vite proxy. |
 | `VITE_CLERK_PUBLISHABLE_KEY` | empty                         | Optional Clerk publishable key for the separate Clerk demo routes.  |
-| `APP_PORT`                   | `3001`                        | Host port published by Docker Compose.                              |
+| `APP_PORT`                   | `3001`                        | Express, container, and published host port used by Compose.        |
 | `APP_STATIC_DIRECTORY`       | empty                         | Built frontend directory served by Express in production.           |
 | `RESUME_API_HOST`            | `127.0.0.1`                   | Address the Express API listens on. Compose overrides to `0.0.0.0`. |
-| `RESUME_API_PORT`            | `3001`                        | Express API port.                                                   |
+| `RESUME_API_PORT`            | `3001`                        | Express port outside Compose; Compose derives it from `APP_PORT`.   |
 | `RESUME_API_PUBLIC_URL`      | `http://localhost:3001`       | Public URL used when generating resume preview and share links.     |
 | `RESUME_DATABASE_PATH`       | `server/.data/resumes.sqlite` | SQLite database path.                                               |
 | `RESUME_SHARE_TTL_MINUTES`   | `60`                          | Lifetime for public resume share links.                             |

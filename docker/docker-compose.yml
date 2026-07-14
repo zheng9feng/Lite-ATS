@@ -3,6 +3,8 @@ name: lite-ats
 services:
   app:
     build:
+      args:
+        APP_PORT: ${APP_PORT:-3001}
       context: ..
       dockerfile: docker/Dockerfile
     image: lite-ats:local
@@ -22,8 +24,8 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       MINIO_USE_SSL: "false"
       RESUME_API_HOST: 0.0.0.0
-      RESUME_API_PORT: 3001
-      RESUME_API_PUBLIC_URL: ${RESUME_API_PUBLIC_URL:-http://localhost:3001}
+      RESUME_API_PORT: ${APP_PORT:-3001}
+      RESUME_API_PUBLIC_URL: ${RESUME_API_PUBLIC_URL:-http://localhost:${APP_PORT:-3001}}
       RESUME_DATABASE_PATH: /app/server/.data/resumes.sqlite
       RESUME_SHARE_TTL_MINUTES: ${RESUME_SHARE_TTL_MINUTES:-60}
     healthcheck:
@@ -31,13 +33,13 @@ services:
         - CMD
         - node
         - -e
-        - fetch('http://127.0.0.1:3001/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+        - fetch('http://127.0.0.1:'+process.env.RESUME_API_PORT+'/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
     ports:
-      - "${APP_PORT:-3001}:3001"
+      - "${APP_PORT:-3001}:${APP_PORT:-3001}"
     volumes:
       - lite-ats-data:/app/server/.data
 
