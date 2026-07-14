@@ -41,6 +41,7 @@ export function resolveServerConfig(env: ServerEnv = process.env) {
     minio: resolveMinioConfig(env),
     publicApiUrl:
       env.RESUME_API_PUBLIC_URL ?? `http://localhost:${apiPort}`,
+    resumeApiHost: env.RESUME_API_HOST ?? '127.0.0.1',
     resumeApiPort: apiPort,
     shareTtlMinutes: readNumber(env.RESUME_SHARE_TTL_MINUTES, 60),
   }

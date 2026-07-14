@@ -110,14 +110,17 @@ Build the application image and start Lite ATS with MinIO:
 docker compose -f docker/docker-compose.yml up --build -d
 ```
 
-Open `http://localhost:3001`. The MinIO console is available at
-`http://localhost:9001`. Compose stores SQLite and MinIO data in named volumes,
-so both survive container restarts.
+For a local deployment, open `http://localhost:3001`. For a remote deployment,
+open `http://<server-ip>:3001` and allow the configured `APP_PORT` through the
+server firewall, or route that port through a reverse proxy. The MinIO console
+is available on port `9001`. Compose stores SQLite and MinIO data in named
+volumes, so both survive container restarts.
 
 Compose reads `.env` automatically. Change `LOCAL_ADMIN_PASSWORD` and the
-MinIO credentials before exposing the deployment. If you set `APP_PORT` to a
-port other than `3001`, set `RESUME_API_PUBLIC_URL` to the matching public URL
-so generated resume links remain reachable.
+MinIO credentials before exposing the deployment. Set `RESUME_API_PUBLIC_URL`
+to the externally reachable origin, such as `https://ats.example.com`. This is
+required for generated resume links to work outside the server. If you publish
+the app directly on a port other than `3001`, include that port in the URL.
 
 Check the deployment or stop it with:
 
@@ -135,6 +138,7 @@ docker compose -f docker/docker-compose.yml down
 | `VITE_CLERK_PUBLISHABLE_KEY` | empty                         | Optional Clerk publishable key for the separate Clerk demo routes.  |
 | `APP_PORT`                   | `3001`                        | Host port published by Docker Compose.                              |
 | `APP_STATIC_DIRECTORY`       | empty                         | Built frontend directory served by Express in production.           |
+| `RESUME_API_HOST`            | `127.0.0.1`                   | Address the Express API listens on. Compose overrides to `0.0.0.0`. |
 | `RESUME_API_PORT`            | `3001`                        | Express API port.                                                   |
 | `RESUME_API_PUBLIC_URL`      | `http://localhost:3001`       | Public URL used when generating resume preview and share links.     |
 | `RESUME_DATABASE_PATH`       | `server/.data/resumes.sqlite` | SQLite database path.                                               |

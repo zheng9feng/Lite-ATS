@@ -19,6 +19,7 @@ const {
   localAdmin,
   minio,
   publicApiUrl,
+  resumeApiHost,
   resumeApiPort,
   shareTtlMinutes,
 } = resolveServerConfig()
@@ -58,8 +59,8 @@ const app = createServerApp({
   }),
 })
 
-app.listen(resumeApiPort, () => {
+app.listen(resumeApiPort, resumeApiHost, () => {
   process.stdout.write(
-    `Resume API listening on http://localhost:${resumeApiPort}\n`
+    `Resume API listening on http://${resumeApiHost}:${resumeApiPort}\n`
   )
 })

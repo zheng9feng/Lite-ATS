@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { resolveMinioConfig, resolveServerConfig } from './config'
 
 describe('resolveServerConfig', () => {
+  it('binds to the IPv4 loopback interface by default', () => {
+    expect(resolveServerConfig({}).resumeApiHost).toBe('127.0.0.1')
+  })
+
+  it('uses the configured API host', () => {
+    expect(
+      resolveServerConfig({ RESUME_API_HOST: '0.0.0.0' }).resumeApiHost
+    ).toBe('0.0.0.0')
+  })
+
   it('uses the default SQLite database path when none is configured', () => {
     expect(resolveServerConfig({}).databasePath).toBe(
       'server/.data/resumes.sqlite'
