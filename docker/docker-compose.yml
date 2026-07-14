@@ -44,7 +44,7 @@ services:
       - lite-ats-data:/app/server/.data
 
   minio:
-    image: cgr.dev/chainguard/minio:latest
+    image: quay.io/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
