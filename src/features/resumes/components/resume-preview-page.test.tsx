@@ -225,22 +225,22 @@ describe('ResumePreviewPage', () => {
       resumes: [createStoredResume(1), createStoredResume(2)],
     })
 
-    const { getByText } = await renderResumePreviewPage()
+    const { getByText, queryByText } = await renderResumePreviewPage()
 
     await expect.element(getByText(/^申请人$/)).toBeInTheDocument()
-    await expect.element(getByText(/^简历文件$/)).toBeInTheDocument()
+    await expect.element(queryByText(/^简历文件$/)).not.toBeInTheDocument()
     await expect.element(getByText(/^Candidate 1$/)).toBeInTheDocument()
     await expect
       .element(getByText('candidate1@example.com'))
       .toBeInTheDocument()
     await expect.element(getByText('Frontend Engineer')).toBeInTheDocument()
-    await expect.element(getByText('candidate-1.pdf')).toBeInTheDocument()
+    await expect.element(queryByText('candidate-1.pdf')).not.toBeInTheDocument()
     await expect.element(getByText(/^Candidate 2$/)).toBeInTheDocument()
     await expect
       .element(getByText('candidate2@example.com'))
       .toBeInTheDocument()
     await expect.element(getByText('Designer')).toBeInTheDocument()
-    await expect.element(getByText('candidate-2.pdf')).toBeInTheDocument()
+    await expect.element(queryByText('candidate-2.pdf')).not.toBeInTheDocument()
   })
 
   it('paginates uploaded applicants', async () => {

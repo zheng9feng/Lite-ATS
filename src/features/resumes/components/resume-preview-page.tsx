@@ -121,13 +121,6 @@ type EditResumePayload = {
   resumeId: string
 }
 
-function formatFileSize(size: number) {
-  if (size < 1024) return `${size} B`
-  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`
-
-  return `${(size / 1024 / 1024).toFixed(1)} MB`
-}
-
 function formatUploadedAt(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
@@ -581,18 +574,6 @@ export function ResumePreviewPage() {
         accessorKey: 'applicant.positionApplied',
         header: t('resumes.preview.table.position'),
         cell: ({ row }) => row.original.applicant.positionApplied,
-      },
-      {
-        accessorKey: 'fileName',
-        header: t('resumes.preview.table.file'),
-        cell: ({ row }) => (
-          <div className='min-w-48'>
-            <p className='font-medium'>{row.original.fileName}</p>
-            <p className='text-sm text-muted-foreground'>
-              {formatFileSize(row.original.fileSize)}
-            </p>
-          </div>
-        ),
       },
       {
         accessorKey: 'uploadedAt',
