@@ -281,9 +281,7 @@ describe('ResumePreviewPage', () => {
     )
 
     await vi.waitFor(() =>
-      expect(fetchResumeFile).toHaveBeenCalledWith(
-        'http://localhost:3001/api/resumes/resume-1/file'
-      )
+      expect(fetchResumeFile).toHaveBeenCalledWith('resume-1')
     )
     expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
     expect(open).toHaveBeenCalledWith(

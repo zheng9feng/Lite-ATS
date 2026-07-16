@@ -136,7 +136,7 @@ function formatUploadedAt(value: string, locale: string) {
 }
 
 async function openResumePreview(resume: ResumeFile) {
-  const file = await fetchResumeFile(resume.previewUrl)
+  const file = await fetchResumeFile(resume.id)
   const previewUrl = URL.createObjectURL(file)
 
   window.open(previewUrl, '_blank', 'noopener,noreferrer')

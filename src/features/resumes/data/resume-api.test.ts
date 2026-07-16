@@ -159,7 +159,7 @@ describe('resume API client', () => {
       method: 'POST',
     })
     expect(share.shareUrl).toBe(
-      'http://localhost:3001/api/resume-shares/share-token'
+      `${window.location.origin}/api/resume-shares/share-token`
     )
   })
 
@@ -218,18 +218,13 @@ describe('resume API client', () => {
       ok: true,
     })
 
-    const result = await fetchResumeFile(
-      'http://localhost:3001/api/resumes/resume-1/file'
-    )
+    const result = await fetchResumeFile('resume-1')
 
-    expect(fetch).toHaveBeenCalledWith(
-      'http://localhost:3001/api/resumes/resume-1/file',
-      {
-        headers: {
-          Authorization: 'Bearer session-token',
-        },
-      }
-    )
+    expect(fetch).toHaveBeenCalledWith('/api/resumes/resume-1/file', {
+      headers: {
+        Authorization: 'Bearer session-token',
+      },
+    })
     expect(result).toBe(pdf)
   })
 

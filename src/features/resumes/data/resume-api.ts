@@ -33,16 +33,8 @@ function apiUrl(path: string) {
   return `${apiBaseUrl}${path}`
 }
 
-function apiResourceUrl(url: string) {
-  try {
-    return new URL(url).href
-  } catch {
-    return apiUrl(url)
-  }
-}
-
-function absoluteApiResourceUrl(url: string) {
-  return new URL(apiResourceUrl(url), window.location.origin).href
+function absoluteApiUrl(path: string) {
+  return new URL(apiUrl(path), window.location.origin).href
 }
 
 function authHeaders() {
@@ -142,10 +134,13 @@ export async function listResumes(): Promise<ResumeFile[]> {
   return parseApiResponse<ResumeFile[]>(response)
 }
 
-export async function fetchResumeFile(previewUrl: string): Promise<Blob> {
-  const response = await fetch(apiResourceUrl(previewUrl), {
-    headers: authHeaders(),
-  })
+export async function fetchResumeFile(resumeId: string): Promise<Blob> {
+  const response = await fetch(
+    apiUrl(`/api/resumes/${encodeURIComponent(resumeId)}/file`),
+    {
+      headers: authHeaders(),
+    }
+  )
 
   if (response.ok) {
     return response.blob()
@@ -206,6 +201,8 @@ export async function createResumeShareLink(
 
   return {
     ...share,
-    shareUrl: absoluteApiResourceUrl(share.shareUrl),
+    shareUrl: absoluteApiUrl(
+      `/api/resume-shares/${encodeURIComponent(share.token)}`
+    ),
   }
 }
