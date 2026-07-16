@@ -276,6 +276,8 @@ describe('ResumeUploadPage', () => {
     const { getByLabelText, getByRole } = await renderResumeUploadPage()
 
     await userEvent.upload(getByLabelText('简历文件'), [ava, ben])
+    await expect.element(getByLabelText('姓名')).not.toBeInTheDocument()
+    await expect.element(getByLabelText('邮箱')).not.toBeInTheDocument()
     await userEvent.click(getByRole('button', { name: /^上传并预览$/i }))
 
     expect(uploadResume).not.toHaveBeenCalled()

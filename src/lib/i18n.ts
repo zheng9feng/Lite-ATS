@@ -572,6 +572,7 @@ export const resources = {
           subtitle:
             '查看已上传 PDF 简历的申请人，并在新标签页打开简历或复制限时分享链接。',
           table: {
+            actions: '操作',
             applicant: '申请人',
             file: '简历文件',
             position: '申请职位',
@@ -1187,6 +1188,7 @@ export const resources = {
           subtitle:
             'Review applicants with uploaded PDF resumes and open each resume in a new tab or copy a limited-time share link.',
           table: {
+            actions: 'Actions',
             applicant: 'Applicant',
             file: 'Resume file',
             position: 'Position applied',

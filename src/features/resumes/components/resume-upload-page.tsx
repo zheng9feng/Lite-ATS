@@ -12,6 +12,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -282,10 +283,10 @@ export function ResumeUploadPage() {
           </p>
         </div>
 
-        <Card className='max-w-2xl'>
-          <CardHeader>
+        <Card className='max-w-3xl overflow-hidden py-0'>
+          <CardHeader className='border-b bg-muted/30 py-5'>
             <div className='flex items-center gap-3'>
-              <div className='flex size-10 items-center justify-center rounded-md bg-muted'>
+              <div className='flex size-10 items-center justify-center rounded-lg border bg-background shadow-xs'>
                 <FileUp className='size-5' />
               </div>
               <div>
@@ -296,56 +297,36 @@ export function ResumeUploadPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form
-                className='space-y-4'
-                onSubmit={form.handleSubmit(onSubmit)}
-              >
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <CardContent className='flex flex-col gap-6 py-6'>
                 {submitError ? (
                   <Alert variant='destructive'>
                     <AlertDescription>{submitError}</AlertDescription>
                   </Alert>
                 ) : null}
-                <div className='grid gap-4 sm:grid-cols-2'>
-                  <FormField
-                    control={form.control}
-                    name='name'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('resumes.form.applicantName')}</FormLabel>
-                        <FormControl>
-                          <Input
-                            autoComplete='name'
-                            placeholder={t(
-                              'resumes.form.applicantNamePlaceholder'
-                            )}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name='email'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('resumes.form.email')}</FormLabel>
-                        <FormControl>
-                          <Input
-                            autoComplete='email'
-                            placeholder={t('resumes.form.emailPlaceholder')}
-                            type='email'
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name='file'
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>{t('resumes.form.resumeFiles')}</FormLabel>
+                      <ResumeFileInput
+                        accept='application/pdf,.pdf,application/zip,.zip'
+                        chooseLabel={t('resumes.form.chooseFile')}
+                        multiple
+                        noFileLabel={t('resumes.form.noFileChosen')}
+                        selectedFileLabel={selectedFileLabel}
+                        variant='dropzone'
+                        {...fileRef}
+                      />
+                      <FormDescription>
+                        {t('resumes.upload.fileDescription')}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 {isBulkUpload ? (
                   <FormField
                     control={form.control}
@@ -369,61 +350,86 @@ export function ResumeUploadPage() {
                     )}
                   />
                 ) : (
-                  <FormField
-                    control={form.control}
-                    name='jobPositionId'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {t('resumes.form.positionApplied')}
-                        </FormLabel>
-                        <SelectDropdown
-                          className='w-full'
-                          defaultValue={field.value}
-                          disabled={isLoadingJobPositions}
-                          isControlled
-                          isPending={isLoadingJobPositions}
-                          items={jobPositions.map((position) => ({
-                            label: position.title,
-                            value: position.id,
-                          }))}
-                          onValueChange={field.onChange}
-                          placeholder={t('resumes.form.positionPlaceholder')}
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-                <FormField
-                  control={form.control}
-                  name='file'
-                  render={() => (
-                    <FormItem>
-                      <FormLabel>{t('resumes.form.resumeFiles')}</FormLabel>
-                      <ResumeFileInput
-                        accept='application/pdf,.pdf,application/zip,.zip'
-                        chooseLabel={t('resumes.form.chooseFile')}
-                        multiple
-                        noFileLabel={t('resumes.form.noFileChosen')}
-                        selectedFileLabel={selectedFileLabel}
-                        {...fileRef}
+                  <>
+                    <div className='grid gap-5 sm:grid-cols-2'>
+                      <FormField
+                        control={form.control}
+                        name='name'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {t('resumes.form.applicantName')}
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                autoComplete='name'
+                                placeholder={t(
+                                  'resumes.form.applicantNamePlaceholder'
+                                )}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                      <FormDescription>
-                        {t('resumes.upload.fileDescription')}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      <FormField
+                        control={form.control}
+                        name='email'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('resumes.form.email')}</FormLabel>
+                            <FormControl>
+                              <Input
+                                autoComplete='email'
+                                placeholder={t('resumes.form.emailPlaceholder')}
+                                type='email'
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name='jobPositionId'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            {t('resumes.form.positionApplied')}
+                          </FormLabel>
+                          <SelectDropdown
+                            className='w-full'
+                            defaultValue={field.value}
+                            disabled={isLoadingJobPositions}
+                            isControlled
+                            isPending={isLoadingJobPositions}
+                            items={jobPositions.map((position) => ({
+                              label: position.title,
+                              value: position.id,
+                            }))}
+                            onValueChange={field.onChange}
+                            placeholder={t('resumes.form.positionPlaceholder')}
+                          />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+              </CardContent>
+              <CardFooter className='justify-end border-t bg-muted/20 py-4'>
                 <Button disabled={isSubmitting} type='submit'>
+                  <FileUp data-icon='inline-start' />
                   {isSubmitting
                     ? t('resumes.upload.submitting')
                     : t('resumes.upload.submit')}
                 </Button>
-              </form>
-            </Form>
-          </CardContent>
+              </CardFooter>
+            </form>
+          </Form>
         </Card>
       </Main>
     </>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
+import { format } from 'date-fns'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from '@tanstack/react-router'
@@ -24,9 +25,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { i18n } from '@/lib/i18n'
-import { useLanguage } from '@/context/language-provider'
 import { useCan } from '@/hooks/use-permission'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -62,6 +64,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTablePagination } from '@/components/data-table'
@@ -121,11 +128,18 @@ type EditResumePayload = {
   resumeId: string
 }
 
-function formatUploadedAt(value: string, locale: string) {
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+function formatUploadedAt(value: string) {
+  return format(new Date(value), 'yyyy-MM-dd')
+}
+
+function getApplicantInitials(name: string) {
+  const parts = name.trim().split(/\s+/)
+
+  return parts
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join('')
+    .toUpperCase()
 }
 
 async function openResumePreview(resume: ResumeFile) {
@@ -440,7 +454,6 @@ function ResumeDeleteDialog({
 
 export function ResumePreviewPage() {
   const { t } = useTranslation()
-  const { locale } = useLanguage()
   const resumes = useResumeStore((state) => state.resumes)
   const removeResume = useResumeStore((state) => state.removeResume)
   const setResumes = useResumeStore((state) => state.setResumes)
@@ -562,90 +575,144 @@ export function ResumePreviewPage() {
         accessorKey: 'applicant.name',
         header: t('resumes.preview.table.applicant'),
         cell: ({ row }) => (
-          <div className='min-w-40'>
-            <p className='font-medium'>{row.original.applicant.name}</p>
-            <p className='text-sm text-muted-foreground'>
-              {row.original.applicant.email}
-            </p>
+          <div className='flex min-w-52 items-center gap-3'>
+            <Avatar className='size-9'>
+              <AvatarFallback>
+                <span className='text-xs font-semibold'>
+                  {getApplicantInitials(row.original.applicant.name)}
+                </span>
+              </AvatarFallback>
+            </Avatar>
+            <div className='min-w-0'>
+              <p className='truncate font-medium'>
+                {row.original.applicant.name}
+              </p>
+              <p className='truncate text-sm text-muted-foreground'>
+                {row.original.applicant.email}
+              </p>
+            </div>
           </div>
         ),
       },
       {
         accessorKey: 'applicant.positionApplied',
         header: t('resumes.preview.table.position'),
-        cell: ({ row }) => row.original.applicant.positionApplied,
+        cell: ({ row }) => (
+          <Badge variant='secondary'>
+            {row.original.applicant.positionApplied}
+          </Badge>
+        ),
       },
       {
         accessorKey: 'uploadedAt',
         header: t('resumes.preview.table.uploaded'),
-        cell: ({ row }) => formatUploadedAt(row.original.uploadedAt, locale),
+        cell: ({ row }) => (
+          <time
+            className='text-muted-foreground tabular-nums'
+            dateTime={row.original.uploadedAt}
+          >
+            {formatUploadedAt(row.original.uploadedAt)}
+          </time>
+        ),
       },
       {
         id: 'actions',
+        header: () => (
+          <span className='block text-end'>
+            {t('resumes.preview.table.actions')}
+          </span>
+        ),
         cell: ({ row }) => (
-          <div className='flex flex-wrap justify-end gap-2'>
+          <div className='flex justify-end gap-1'>
             {canUpdateResumes ? (
-              <Button
-                aria-label={t('resumes.preview.actions.editForApplicant', {
-                  applicantName: row.original.applicant.name,
-                })}
-                size='sm'
-                type='button'
-                variant='outline'
-                onClick={() => setEditingResume(row.original)}
-              >
-                <Pencil />
-                {t('resumes.preview.actions.edit')}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    aria-label={t('resumes.preview.actions.editForApplicant', {
+                      applicantName: row.original.applicant.name,
+                    })}
+                    size='icon'
+                    type='button'
+                    variant='ghost'
+                    onClick={() => setEditingResume(row.original)}
+                  >
+                    <Pencil data-icon='inline-start' />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t('resumes.preview.actions.edit')}
+                </TooltipContent>
+              </Tooltip>
             ) : null}
             {canShareResumes ? (
-              <Button
-                aria-label={t('resumes.preview.actions.shareForApplicant', {
-                  applicantName: row.original.applicant.name,
-                })}
-                disabled={sharingResumeId === row.original.id}
-                size='sm'
-                type='button'
-                variant='outline'
-                onClick={() => void copyShareLink(row.original)}
-              >
-                <Share2 />
-                {t('resumes.preview.actions.share')}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    aria-label={t('resumes.preview.actions.shareForApplicant', {
+                      applicantName: row.original.applicant.name,
+                    })}
+                    disabled={sharingResumeId === row.original.id}
+                    size='icon'
+                    type='button'
+                    variant='ghost'
+                    onClick={() => void copyShareLink(row.original)}
+                  >
+                    <Share2 data-icon='inline-start' />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t('resumes.preview.actions.share')}
+                </TooltipContent>
+              </Tooltip>
             ) : null}
-            <Button
-              aria-label={t('resumes.preview.actions.previewForApplicant', {
-                applicantName: row.original.applicant.name,
-              })}
-              size='sm'
-              type='button'
-              variant='outline'
-              onClick={() => {
-                void openResumePreview(row.original).catch((error) => {
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : t('resumes.preview.errors.load')
-                  )
-                })
-              }}
-            >
-              <ExternalLink />
-              {t('resumes.preview.actions.preview')}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  aria-label={t('resumes.preview.actions.previewForApplicant', {
+                    applicantName: row.original.applicant.name,
+                  })}
+                  size='icon'
+                  type='button'
+                  variant='outline'
+                  onClick={() => {
+                    void openResumePreview(row.original).catch((error) => {
+                      toast.error(
+                        error instanceof Error
+                          ? error.message
+                          : t('resumes.preview.errors.load')
+                      )
+                    })
+                  }}
+                >
+                  <ExternalLink data-icon='inline-start' />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {t('resumes.preview.actions.preview')}
+              </TooltipContent>
+            </Tooltip>
             {canDeleteResumes ? (
-              <Button
-                aria-label={t('resumes.preview.actions.deleteForApplicant', {
-                  applicantName: row.original.applicant.name,
-                })}
-                size='sm'
-                type='button'
-                variant='destructive'
-                onClick={() => setDeletingResume(row.original)}
-              >
-                <Trash2 />
-                {t('resumes.preview.actions.delete')}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    aria-label={t(
+                      'resumes.preview.actions.deleteForApplicant',
+                      {
+                        applicantName: row.original.applicant.name,
+                      }
+                    )}
+                    size='icon'
+                    type='button'
+                    variant='destructive'
+                    onClick={() => setDeletingResume(row.original)}
+                  >
+                    <Trash2 data-icon='inline-start' />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t('resumes.preview.actions.delete')}
+                </TooltipContent>
+              </Tooltip>
             ) : null}
           </div>
         ),
@@ -657,7 +724,6 @@ export function ResumePreviewPage() {
       canShareResumes,
       canUpdateResumes,
       copyShareLink,
-      locale,
       sharingResumeId,
       t,
     ]
@@ -715,13 +781,20 @@ export function ResumePreviewPage() {
           </Card>
         ) : resumes.length > 0 ? (
           <div className='flex flex-1 flex-col gap-4'>
-            <div className='overflow-hidden rounded-md border'>
-              <Table>
-                <TableHeader>
+            <div className='overflow-hidden rounded-xl border bg-card shadow-xs'>
+              <Table className='min-w-190'>
+                <TableHeader className='bg-muted/40'>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
+                        <TableHead
+                          key={header.id}
+                          className={
+                            header.column.id === 'actions'
+                              ? 'h-11 px-4'
+                              : 'h-11 px-5'
+                          }
+                        >
                           {header.isPlaceholder
                             ? null
                             : flexRender(
@@ -735,9 +808,16 @@ export function ResumePreviewPage() {
                 </TableHeader>
                 <TableBody>
                   {table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow key={row.id} className='h-18'>
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
+                        <TableCell
+                          key={cell.id}
+                          className={
+                            cell.column.id === 'actions'
+                              ? 'px-4 py-3'
+                              : 'px-5 py-3'
+                          }
+                        >
                           {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext()
