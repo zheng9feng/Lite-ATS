@@ -157,7 +157,10 @@ export const resources = {
       usersPage: {
         actions: {
           add: '添加用户',
+          delete: '删除',
+          edit: '编辑',
           invite: '邀请用户',
+          openMenu: '打开用户操作菜单',
         },
         columns: {
           email: '邮箱',
@@ -802,7 +805,10 @@ export const resources = {
       usersPage: {
         actions: {
           add: 'Add User',
+          delete: 'Delete',
+          edit: 'Edit',
           invite: 'Invite User',
+          openMenu: 'Open user actions',
         },
         columns: {
           email: 'Email',

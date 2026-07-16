@@ -1,6 +1,7 @@
 import { clearCookies } from '@/test-utils/cookies'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
+import { userEvent } from 'vitest/browser'
 import { LanguageProvider } from '@/context/language-provider'
 import { type User } from '../data/schema'
 import { UsersPrimaryButtons } from './users-primary-buttons'
@@ -86,7 +87,7 @@ describe('Users table i18n', () => {
       .toBeInTheDocument()
 
     await expect.element(getByText('用户名')).toBeInTheDocument()
-    await expect.element(getByText('姓名')).toBeInTheDocument()
+    await expect.element(getByText('姓名')).not.toBeInTheDocument()
     await expect.element(getByText('邮箱')).toBeInTheDocument()
     await expect.element(getByText('电话号码')).toBeInTheDocument()
 
@@ -96,6 +97,24 @@ describe('Users table i18n', () => {
     await expect.element(getByText('经理')).toBeInTheDocument()
     await expect.element(getByText('收银员')).toBeInTheDocument()
     await expect.element(getByText('管理员')).toBeInTheDocument()
+  })
+
+  it('renders the row action menu in Chinese by default', async () => {
+    const { getByRole } = await renderUsersTable()
+    const firstRow = getByRole('row', {
+      name: /citlalli\.spinka45.*citlalli@example\.com/i,
+    })
+
+    await userEvent.click(
+      firstRow.getByRole('button', { name: '打开用户操作菜单' })
+    )
+
+    await expect
+      .element(getByRole('menuitem', { name: '编辑' }))
+      .toBeInTheDocument()
+    await expect
+      .element(getByRole('menuitem', { name: '删除' }))
+      .toBeInTheDocument()
   })
 
   it('renders primary buttons in Chinese by default', async () => {
