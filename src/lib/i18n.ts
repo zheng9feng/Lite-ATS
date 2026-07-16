@@ -168,6 +168,20 @@ export const resources = {
           username: '用户名',
         },
         description: '在这里管理用户及其角色。',
+        deleteDialog: {
+          confirm: '删除',
+          deleting: '正在删除...',
+          description:
+            '确定要删除用户 {{username}} 吗？此操作将永久移除该用户及其 {{role}} 角色，且无法撤销。',
+          errors: {
+            delete: '无法删除用户。',
+          },
+          placeholder: '输入用户名以确认删除。',
+          title: '删除用户',
+          username: '用户名',
+          warningDescription: '请谨慎操作，此操作无法恢复。',
+          warningTitle: '警告！',
+        },
         dialog: {
           addDescription: '在此创建新用户，完成后点击保存。',
           addTitle: '添加新用户',
@@ -799,6 +813,21 @@ export const resources = {
           username: 'Username',
         },
         description: 'Manage your users and their roles here.',
+        deleteDialog: {
+          confirm: 'Delete',
+          deleting: 'Deleting...',
+          description:
+            'Are you sure you want to delete {{username}}? This action will permanently remove the user with the {{role}} role and cannot be undone.',
+          errors: {
+            delete: 'Failed to delete user.',
+          },
+          placeholder: 'Enter username to confirm deletion.',
+          title: 'Delete User',
+          username: 'Username',
+          warningDescription:
+            'Please be careful. This operation cannot be rolled back.',
+          warningTitle: 'Warning!',
+        },
         dialog: {
           addDescription: "Create new user here. Click save when you're done.",
           addTitle: 'Add New User',

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/stores/auth-store'
 import {
   createUser,
+  deleteUser,
   listUserRoleOptions,
   listUsers,
   updateUser,
@@ -219,5 +220,30 @@ describe('users API client', () => {
       },
       method: 'PUT',
     })
+  })
+
+  it('deletes a user with the active session', async () => {
+    fetch.mockResolvedValue({ ok: true })
+
+    await expect(deleteUser('user-viewer')).resolves.toBeUndefined()
+
+    expect(fetch).toHaveBeenCalledWith('/api/users/user-viewer', {
+      headers: {
+        Authorization: 'Bearer session-token',
+      },
+      method: 'DELETE',
+    })
+  })
+
+  it('surfaces delete API failures', async () => {
+    fetch.mockResolvedValue({
+      json: async () => ({ error: 'User could not be deleted.' }),
+      ok: false,
+      statusText: 'Bad Request',
+    })
+
+    await expect(deleteUser('user-viewer')).rejects.toThrow(
+      'User could not be deleted.'
+    )
   })
 })

@@ -53,6 +53,7 @@ export function UsersDialogs() {
               }
             }}
             currentRow={currentRow}
+            onDeleted={handleSaved}
           />
         </>
       )}

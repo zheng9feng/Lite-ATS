@@ -181,3 +181,14 @@ export async function updateUser(
     roleId: payload.roleId,
   }
 }
+
+export async function deleteUser(userId: string): Promise<void> {
+  const response = await fetch(apiUrl(`/api/users/${userId}`), {
+    headers: authHeaders(),
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    await parseApiResponse<never>(response)
+  }
+}

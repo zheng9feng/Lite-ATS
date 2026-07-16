@@ -2,31 +2,51 @@
 
 import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
-import { showSubmittedData } from '@/lib/show-submitted-data'
+import { useTranslation } from 'react-i18next'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { type User } from '../data/schema'
+import { deleteUser } from '../data/users-api'
 
 type UserDeleteDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentRow: User
+  onDeleted?: () => Promise<void> | void
 }
 
 export function UsersDeleteDialog({
   open,
   onOpenChange,
   currentRow,
+  onDeleted,
 }: UserDeleteDialogProps) {
+  const { t } = useTranslation()
   const [value, setValue] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (value.trim() !== currentRow.username) return
 
-    onOpenChange(false)
-    showSubmittedData(currentRow, 'The following user has been deleted:')
+    setError(null)
+    setIsDeleting(true)
+
+    try {
+      await deleteUser(currentRow.id)
+      await onDeleted?.()
+      onOpenChange(false)
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : t('usersPage.deleteDialog.errors.delete')
+      )
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -35,13 +55,14 @@ export function UsersDeleteDialog({
       onOpenChange={onOpenChange}
       form='users-delete-form'
       disabled={value.trim() !== currentRow.username}
+      isLoading={isDeleting}
       title={
         <span className='text-destructive'>
           <AlertTriangle
             className='me-1 inline-block stroke-destructive'
             size={18}
           />{' '}
-          Delete User
+          {t('usersPage.deleteDialog.title')}
         </span>
       }
       desc={
@@ -54,35 +75,40 @@ export function UsersDeleteDialog({
           className='space-y-4'
         >
           <p className='mb-2'>
-            Are you sure you want to delete{' '}
-            <span className='font-bold'>{currentRow.username}</span>?
-            <br />
-            This action will permanently remove the user with the role of{' '}
-            <span className='font-bold'>
-              {currentRow.role.toUpperCase()}
-            </span>{' '}
-            from the system. This cannot be undone.
+            {t('usersPage.deleteDialog.description', {
+              role: currentRow.role.toUpperCase(),
+              username: currentRow.username,
+            })}
           </p>
 
           <Label className='my-2'>
-            Username:
+            {t('usersPage.deleteDialog.username')}:
             <Input
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder='Enter username to confirm deletion.'
+              placeholder={t('usersPage.deleteDialog.placeholder')}
               autoFocus
             />
           </Label>
 
           <Alert variant='destructive'>
-            <AlertTitle>Warning!</AlertTitle>
+            <AlertTitle>{t('usersPage.deleteDialog.warningTitle')}</AlertTitle>
             <AlertDescription>
-              Please be careful, this operation can not be rolled back.
+              {t('usersPage.deleteDialog.warningDescription')}
             </AlertDescription>
           </Alert>
+          {error && (
+            <p role='alert' className='text-sm text-destructive'>
+              {error}
+            </p>
+          )}
         </form>
       }
-      confirmText='Delete'
+      confirmText={
+        isDeleting
+          ? t('usersPage.deleteDialog.deleting')
+          : t('usersPage.deleteDialog.confirm')
+      }
       destructive
     />
   )
