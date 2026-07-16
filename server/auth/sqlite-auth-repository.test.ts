@@ -40,9 +40,13 @@ describe('createSqliteAuthRepository', () => {
         'resumes:share',
         'users:manage',
         'rbac:manage',
+        'pages:view',
       ])
     )
     expect(repository.listRolePermissions('normal')).toEqual(['resumes:read'])
+    expect(repository.findRoleByName('admin')?.description).toBe(
+      'Full access to user management, RBAC, example pages, and resumes.'
+    )
 
     repository.close()
   })

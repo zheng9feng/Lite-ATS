@@ -50,6 +50,9 @@ describe('migrateResumeDatabase', () => {
     expect(migrations.map((migration) => migration.name)).toContain(
       '20260625000000_create_job_positions'
     )
+    expect(migrations.map((migration) => migration.name)).toContain(
+      '20260716000000_add_pages_view_permission'
+    )
 
     const resumeColumns = database
       .prepare('PRAGMA table_info(resumes)')
@@ -65,6 +68,7 @@ describe('migrateResumeDatabase', () => {
       expect.arrayContaining([
         'job-positions:manage',
         'job-positions:read',
+        'pages:view',
       ])
     )
 

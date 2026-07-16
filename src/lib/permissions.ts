@@ -8,6 +8,7 @@ export const appPermissions = [
   'resumes:share',
   'users:manage',
   'rbac:manage',
+  'pages:view',
 ] as const
 
 export type AppPermission = (typeof appPermissions)[number]

@@ -281,6 +281,9 @@ export const resources = {
           rbac: {
             manage: '管理角色和权限分配。',
           },
+          pages: {
+            view: '访问认证和错误示例页面。',
+          },
           resumes: {
             create: '上传新简历。',
             delete: '删除简历。',
@@ -294,13 +297,15 @@ export const resources = {
         },
         resources: {
           'job-positions': '职位',
+          pages: '页面',
           rbac: '权限',
           resumes: '简历',
           users: '用户',
         },
         roles: {
           admin: {
-            description: '拥有用户管理、权限配置和简历管理的完整访问权限。',
+            description:
+              '拥有用户管理、权限配置、示例页面和简历管理的完整访问权限。',
           },
           normal: {
             description: '拥有简历只读访问权限。',
@@ -932,6 +937,9 @@ export const resources = {
           rbac: {
             manage: 'Manage role and permission assignments.',
           },
+          pages: {
+            view: 'Access authentication and error example pages.',
+          },
           resumes: {
             create: 'Upload new resumes.',
             delete: 'Delete resumes.',
@@ -945,13 +953,15 @@ export const resources = {
         },
         resources: {
           'job-positions': 'Job Positions',
+          pages: 'Pages',
           rbac: 'Permissions',
           resumes: 'Resumes',
           users: 'Users',
         },
         roles: {
           admin: {
-            description: 'Full access to user management, RBAC, and resumes.',
+            description:
+              'Full access to user management, RBAC, example pages, and resumes.',
           },
           normal: {
             description: 'Read-only access to resumes.',

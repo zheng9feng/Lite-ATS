@@ -91,6 +91,7 @@ export const sidebarData: SidebarData = {
         {
           title: 'Auth',
           icon: ShieldCheck,
+          requiredPermissions: ['pages:view'],
           items: [
             {
               title: 'Sign In',
@@ -117,6 +118,7 @@ export const sidebarData: SidebarData = {
         {
           title: 'Errors',
           icon: Bug,
+          requiredPermissions: ['pages:view'],
           items: [
             {
               title: 'Unauthorized',

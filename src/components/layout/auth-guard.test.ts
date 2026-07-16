@@ -80,4 +80,16 @@ describe('auth guard', () => {
       })
     ).toEqual({ type: 'forbidden' })
   })
+
+  it('requires page view access for authenticated error examples', () => {
+    expect(getRoutePermissions('/errors/forbidden')).toEqual(['pages:view'])
+    expect(
+      getAuthGuardDecision({
+        currentHref: '/errors/forbidden',
+        hasSession: true,
+        permissions: ['resumes:read'],
+        requiredPermissions: getRoutePermissions('/errors/forbidden'),
+      })
+    ).toEqual({ type: 'forbidden' })
+  })
 })

@@ -39,6 +39,8 @@ describe('sidebarData', () => {
     expect(entries.map((entry) => entry.title)).not.toContain('Resume Upload')
     expect(entries.map((entry) => entry.title)).not.toContain('Users')
     expect(entries.map((entry) => entry.title)).not.toContain('Permissions')
+    expect(entries.map((entry) => entry.title)).not.toContain('Auth')
+    expect(entries.map((entry) => entry.title)).not.toContain('Errors')
   })
 
   it('shows the permissions module to RBAC managers', () => {
@@ -62,6 +64,20 @@ describe('sidebarData', () => {
     expect(entries).toContainEqual({
       title: 'Job Positions',
       url: '/job-positions',
+    })
+  })
+
+  it('shows example pages only to users with page view access', () => {
+    const entries = collectNavEntries(
+      filterNavGroupsByPermissions(sidebarData.navGroups, ['pages:view'])
+    )
+
+    expect(entries.map((entry) => entry.title)).toContain('Auth')
+    expect(entries.map((entry) => entry.title)).toContain('Errors')
+    expect(entries).toContainEqual({ title: 'Sign In', url: '/sign-in' })
+    expect(entries).toContainEqual({
+      title: 'Forbidden',
+      url: '/errors/forbidden',
     })
   })
 })

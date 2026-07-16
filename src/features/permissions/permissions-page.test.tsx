@@ -102,7 +102,11 @@ describe('PermissionsPage', () => {
       .toBeInTheDocument()
     await expect.element(getByText('系统角色')).toBeInTheDocument()
     await expect
-      .element(getByText('拥有用户管理、权限配置和简历管理的完整访问权限。'))
+      .element(
+        getByText(
+          '拥有用户管理、权限配置、示例页面和简历管理的完整访问权限。'
+        )
+      )
       .toBeInTheDocument()
     await expect.element(getByText('Review resumes.')).toBeInTheDocument()
     await expect
