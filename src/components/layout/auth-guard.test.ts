@@ -55,8 +55,9 @@ describe('auth guard', () => {
     expect(decision).toEqual({ type: 'forbidden' })
   })
 
-  it('requires RBAC management access for the permissions module', () => {
+  it('requires RBAC management access for roles and permissions', () => {
     expect(getRoutePermissions('/permissions')).toEqual(['rbac:manage'])
+    expect(getRoutePermissions('/roles')).toEqual(['rbac:manage'])
     expect(
       getAuthGuardDecision({
         currentHref: '/permissions',

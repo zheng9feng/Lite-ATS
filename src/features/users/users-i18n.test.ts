@@ -38,15 +38,13 @@ const dataTableTranslationKeys = [
 ] as const
 
 const permissionsTranslationKeys = [
-  'actions.create',
-  'actions.delete',
+  'actions.collapseAll',
+  'actions.discard',
+  'actions.expandAll',
   'actions.save',
   'api.failed',
-  'createRole.description',
-  'createRole.title',
   'description',
-  'fields.description',
-  'fields.roleName',
+  'empty.title',
   'permissionDescriptions.job-positions.manage',
   'permissionDescriptions.job-positions.read',
   'permissionDescriptions.pages.view',
@@ -62,18 +60,14 @@ const permissionsTranslationKeys = [
   'resources.rbac',
   'resources.resumes',
   'resources.users',
-  'roleEditor.description',
+  'role.label',
   'roles.admin.description',
   'roles.normal.description',
-  'systemRole',
-  'tabs.roles',
-  'tabs.users',
+  'search',
+  'summary.selected',
   'title',
-  'userCount',
-  'userRoles.assignedRoles',
-  'userRoles.effectivePermissions',
-  'userStatus.active',
-  'userStatus.inactive',
+  'tree.all',
+  'unsaved.title',
 ] as const
 
 function getResourceValue(

@@ -192,6 +192,7 @@ describe('createAuthService', () => {
       email: 'multi-role@example.com',
       name: 'Multi Role',
       password: 'password123',
+      roleIds: [readRole.id],
       status: 'active',
     })
 
@@ -207,6 +208,17 @@ describe('createAuthService', () => {
         ],
       })
     )
+    expect(() => service.setUserRoles(user.id, [])).toThrow(
+      'Every user must have at least one role.'
+    )
+    await expect(
+      service.createUser({
+        email: 'roleless@example.com',
+        name: 'Roleless User',
+        password: 'password123',
+        status: 'active',
+      })
+    ).rejects.toThrow('Every user must have at least one role.')
 
     repository.close()
   })
@@ -259,13 +271,13 @@ describe('createAuthService', () => {
       name: 'rbac-owner',
       permissions: ['rbac:manage'],
     })
-    const user = await service.createUser({
+    await service.createUser({
       email: 'owner@example.com',
       name: 'RBAC Owner',
       password: 'password123',
+      roleIds: [rbacRole.id],
       status: 'active',
     })
-    service.setUserRoles(user.id, [rbacRole.id])
 
     expect(() =>
       service.updateRole(rbacRole.id, {

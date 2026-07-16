@@ -21,12 +21,12 @@ export const users = Array.from({ length: 500 }, () => {
       'invited',
       'suspended',
     ]),
-    role: faker.helpers.arrayElement([
-      'superadmin',
-      'admin',
-      'cashier',
-      'manager',
-    ]),
+    roles: faker.helpers
+      .arrayElements(['superadmin', 'admin', 'cashier', 'manager'], {
+        min: 1,
+        max: 2,
+      })
+      .map((name) => ({ id: `demo-${name}`, name })),
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
   }

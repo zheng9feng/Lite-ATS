@@ -49,7 +49,7 @@ export function getRoutePermissions(pathname: string): AppPermission[] {
     return ['users:manage']
   }
 
-  if (pathname.startsWith('/permissions')) {
+  if (pathname.startsWith('/permissions') || pathname.startsWith('/roles')) {
     return ['rbac:manage']
   }
 

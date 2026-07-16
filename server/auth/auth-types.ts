@@ -28,10 +28,12 @@ export type AuthUser = {
 export type PublicAuthUser = Omit<AuthUser, 'passwordHash'>
 
 export type AuthRole = {
+  createdAt: string
   description: string
   id: string
   isSystem: boolean
   name: RoleName
+  updatedAt: string
 }
 
 export type AuthPermission = {

@@ -76,7 +76,9 @@ export function UsersDeleteDialog({
         >
           <p className='mb-2'>
             {t('usersPage.deleteDialog.description', {
-              role: currentRow.role.toUpperCase(),
+              roles: currentRow.roles
+                .map((role) => role.name.toUpperCase())
+                .join(', '),
               username: currentRow.username,
             })}
           </p>

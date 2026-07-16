@@ -31,10 +31,12 @@ type UserRow = {
 }
 
 type RoleRow = {
+  created_at: string
   description: string
   id: string
   is_system: 0 | 1
   name: RoleName
+  updated_at: string
 }
 
 type PermissionRow = {
@@ -78,10 +80,12 @@ function toUser(row: UserRow): AuthUser {
 
 function toRole(row: RoleRow): AuthRole {
   return {
+    createdAt: row.created_at,
     description: row.description,
     id: row.id,
     isSystem: Boolean(row.is_system),
     name: row.name,
+    updatedAt: row.updated_at,
   }
 }
 
@@ -113,27 +117,34 @@ export function createSqliteAuthRepository({
   database.pragma('foreign_keys = ON')
 
   const listRoles = database.prepare(`
-    SELECT id, name, description, is_system
+    SELECT id, name, description, is_system, created_at, updated_at
     FROM t_roles
     ORDER BY CASE name WHEN 'admin' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END, name
   `)
   const findRoleByName = database.prepare<string>(`
-    SELECT id, name, description, is_system
+    SELECT id, name, description, is_system, created_at, updated_at
     FROM t_roles
     WHERE name = ?
   `)
   const findRoleById = database.prepare<string>(`
-    SELECT id, name, description, is_system
+    SELECT id, name, description, is_system, created_at, updated_at
     FROM t_roles
     WHERE id = ?
   `)
   const insertRole = database.prepare(`
-    INSERT INTO t_roles (id, name, description, is_system)
-    VALUES (@id, @name, @description, 0)
+    INSERT INTO t_roles (
+      id,
+      name,
+      description,
+      is_system,
+      created_at,
+      updated_at
+    )
+    VALUES (@id, @name, @description, 0, @createdAt, @updatedAt)
   `)
   const updateRole = database.prepare(`
     UPDATE t_roles
-    SET name = @name, description = @description
+    SET name = @name, description = @description, updated_at = @updatedAt
     WHERE id = @id
   `)
   const deleteRole = database.prepare<string>(`
@@ -238,7 +249,7 @@ export function createSqliteAuthRepository({
     VALUES (@userId, @roleId)
   `)
   const getUserRoles = database.prepare<string>(`
-    SELECT r.id, r.name, r.description, r.is_system
+    SELECT r.id, r.name, r.description, r.is_system, r.created_at, r.updated_at
     FROM t_roles r
     INNER JOIN t_user_roles ur ON ur.role_id = r.id
     WHERE ur.user_id = ?
@@ -312,17 +323,22 @@ export function createSqliteAuthRepository({
   return {
     close: () => database.close(),
     createRole: (payload: CreateRolePayload) => {
+      const now = new Date().toISOString()
       const role: AuthRole = {
+        createdAt: now,
         description: payload.description,
         id: randomUUID(),
         isSystem: false,
         name: payload.name,
+        updatedAt: now,
       }
 
       insertRole.run({
+        createdAt: role.createdAt,
         description: role.description,
         id: role.id,
         name: role.name,
+        updatedAt: role.updatedAt,
       })
 
       return role
@@ -466,12 +482,14 @@ export function createSqliteAuthRepository({
         ...currentRole,
         description: payload.description ?? currentRole.description,
         name: payload.name ?? currentRole.name,
+        updatedAt: new Date().toISOString(),
       }
 
       updateRole.run({
         description: nextRole.description,
         id: nextRole.id,
         name: nextRole.name,
+        updatedAt: nextRole.updatedAt,
       })
 
       return nextRole

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { LongText } from '@/components/long-text'
-import { callTypes, roles } from '../data/data'
+import { callTypes } from '../data/data'
 import { type User } from '../data/schema'
 import { DataTableRowActions } from './data-table-row-actions'
 
@@ -13,7 +13,7 @@ export function getUserStatusLabel(t: TFunction, status: User['status']) {
   return t(`usersPage.status.${status}`)
 }
 
-export function getUserRoleLabel(t: TFunction, role: User['role']) {
+export function getUserRoleLabel(t: TFunction, role: string) {
   return t(`usersPage.roles.${role}`, {
     defaultValue: role
       .split(/[-_\s]+/)
@@ -115,7 +115,7 @@ export function getUsersColumns(t: TFunction): ColumnDef<User>[] {
       enableSorting: false,
     },
     {
-      accessorKey: 'role',
+      accessorKey: 'roles',
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
@@ -123,22 +123,20 @@ export function getUsersColumns(t: TFunction): ColumnDef<User>[] {
         />
       ),
       cell: ({ row }) => {
-        const { role } = row.original
-        const userType = roles.find(({ value }) => value === role)
+        const { roles: userRoles } = row.original
 
         return (
-          <div className='flex items-center gap-x-2'>
-            {userType?.icon && (
-              <userType.icon size={16} className='text-muted-foreground' />
-            )}
-            <span className='text-sm capitalize'>
-              {getUserRoleLabel(t, role)}
-            </span>
+          <div className='flex max-w-64 flex-wrap gap-1.5'>
+            {userRoles.map((role) => (
+              <Badge key={role.id} variant='secondary'>
+                {getUserRoleLabel(t, role.name)}
+              </Badge>
+            ))}
           </div>
         )
       },
-      filterFn: (row, id, value) => {
-        return value.includes(row.getValue(id))
+      filterFn: (row, _id, value: string[]) => {
+        return row.original.roles.some((role) => value.includes(role.name))
       },
       enableSorting: false,
       enableHiding: false,

@@ -12,7 +12,7 @@ const updateUser = vi.hoisted(() => vi.fn())
 const VALIDATION_MESSAGES = {
   username: 'Username is required.',
   email: 'Email is required.',
-  role: 'Role is required.',
+  role: 'Select at least one role.',
   password: 'Password is required.',
   passwordMismatch: "Passwords don't match.",
   passwordLength: 'Password must be at least 8 characters long.',
@@ -28,8 +28,10 @@ const MOCK_USER: User = {
   email: 'alex@smith.com',
   phoneNumber: '+19999999999',
   status: 'active',
-  role: 'admin',
-  roleId: 'role-admin',
+  roles: [
+    { id: 'role-admin', name: 'admin' },
+    { id: 'role-reviewer', name: 'reviewer' },
+  ],
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-02-02'),
 }
@@ -89,7 +91,7 @@ describe('UsersActionDialog', () => {
         .toBeInTheDocument()
       await expect
         .element(getByRole('combobox', { name: '角色' }))
-        .toHaveTextContent('选择角色')
+        .toHaveTextContent('选择一个或多个角色')
       await expect
         .element(getByRole('button', { name: '保存更改' }))
         .toBeInTheDocument()
@@ -157,7 +159,7 @@ describe('UsersActionDialog', () => {
       await userEvent.click(screen.getByRole('combobox', { name: /Role/i }))
 
       await expect
-        .element(screen.getByRole('option', { name: 'Reviewer' }))
+        .element(screen.getByRole('menuitemcheckbox', { name: 'Reviewer' }))
         .toBeInTheDocument()
     })
 
@@ -234,7 +236,7 @@ describe('UsersActionDialog', () => {
         email: MOCK_USER.email,
         name: MOCK_USER.username,
         password: 'S3cur3P@ssw0rd',
-        roleId: 'role-admin',
+        roleIds: ['role-admin'],
         status: 'active',
       })
     })
@@ -298,7 +300,7 @@ describe('UsersActionDialog', () => {
       expect(updateUser).toHaveBeenCalledWith(MOCK_USER.id, {
         email: MOCK_USER.email,
         name: MOCK_USER.username,
-        roleId: MOCK_USER.roleId,
+        roleIds: ['role-admin', 'role-reviewer'],
         status: MOCK_USER.status,
       })
     })
@@ -359,7 +361,7 @@ describe('UsersActionDialog', () => {
         email: MOCK_USER.email,
         name: EDIT_SUCCESS_USERNAME,
         password: 'S3cur3P@ssw0rd',
-        roleId: MOCK_USER.roleId,
+        roleIds: ['role-admin', 'role-reviewer'],
         status: MOCK_USER.status,
       })
     })
@@ -389,7 +391,7 @@ async function fillRequiredProfileFields(
   const roleSelect = screen.getByRole('combobox', { name: /Role/i })
   await user.click(roleSelect)
   await user.click(
-    screen.getByRole('option', {
+    screen.getByRole('menuitemcheckbox', {
       exact: true,
       name: overrides?.roleOption ?? 'Admin',
     })

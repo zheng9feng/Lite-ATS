@@ -78,10 +78,23 @@ export const sidebarData: SidebarData = {
           requiredPermissions: ['users:manage'],
         },
         {
-          title: 'Permissions',
-          url: '/permissions',
-          icon: KeyRound,
+          title: 'Access Control',
+          icon: ShieldCheck,
           requiredPermissions: ['rbac:manage'],
+          items: [
+            {
+              title: 'Roles',
+              url: '/roles',
+              icon: UserCog,
+              requiredPermissions: ['rbac:manage'],
+            },
+            {
+              title: 'Permissions',
+              url: '/permissions',
+              icon: KeyRound,
+              requiredPermissions: ['rbac:manage'],
+            },
+          ],
         },
       ],
     },

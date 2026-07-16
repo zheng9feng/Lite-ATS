@@ -1,18 +1,7 @@
 import { useAuthStore } from '@/stores/auth-store'
 import { i18n } from '@/lib/i18n'
 import { type AppPermission } from '@/lib/permissions'
-
-export type RoleSummary = {
-  description: string
-  id: string
-  isSystem: boolean
-  name: string
-}
-
-export type RoleDto = RoleSummary & {
-  permissions: AppPermission[]
-  userCount: number
-}
+import { listRoles, type RoleDto } from '@/features/roles/data/roles-api'
 
 export type PermissionDto = {
   description: string
@@ -30,30 +19,10 @@ export type PermissionResourceGroup = {
   resource: string
 }
 
-export type PermissionUser = {
-  createdAt: string
-  email: string
-  id: string
-  name: string
-  permissions: AppPermission[]
-  roles: RoleSummary[]
-  status: 'active' | 'inactive'
-  updatedAt: string
-}
-
-export type PermissionResources = {
+export type PermissionAssignmentData = {
   permissionsByResource: PermissionResourceGroup[]
   roles: RoleDto[]
-  users: PermissionUser[]
 }
-
-export type CreateRolePayload = {
-  description: string
-  name: string
-  permissions: AppPermission[]
-}
-
-export type UpdateRolePayload = Partial<CreateRolePayload>
 
 const apiBaseUrl = import.meta.env.VITE_RESUME_API_BASE_URL ?? ''
 
@@ -129,66 +98,28 @@ function groupPermissions(permissions: PermissionDto[]) {
     .sort((a, b) => a.resource.localeCompare(b.resource))
 }
 
-export async function listPermissionResources(): Promise<PermissionResources> {
-  const [rolesResponse, permissionsResponse, usersResponse] = await Promise.all(
-    [
-      fetch(apiUrl('/api/roles'), {
-        headers: authHeaders(),
-      }),
-      fetch(apiUrl('/api/permissions'), {
-        headers: authHeaders(),
-      }),
-      fetch(apiUrl('/api/users'), {
-        headers: authHeaders(),
-      }),
-    ]
-  )
-
-  const [roles, permissions, users] = await Promise.all([
-    parseApiResponse<RoleDto[]>(rolesResponse),
-    parseApiResponse<PermissionDto[]>(permissionsResponse),
-    parseApiResponse<PermissionUser[]>(usersResponse),
+export async function listPermissionAssignmentData(): Promise<PermissionAssignmentData> {
+  const [roles, permissionsResponse] = await Promise.all([
+    listRoles(),
+    fetch(apiUrl('/api/permissions'), {
+      headers: authHeaders(),
+    }),
   ])
+  const permissions =
+    await parseApiResponse<PermissionDto[]>(permissionsResponse)
 
   return {
     permissionsByResource: groupPermissions(permissions),
     roles,
-    users,
   }
 }
 
-export async function createRole(payload: CreateRolePayload) {
-  const response = await fetch(apiUrl('/api/roles'), {
-    body: JSON.stringify(payload),
-    headers: jsonHeaders(),
-    method: 'POST',
-  })
-
-  return parseApiResponse<RoleDto>(response)
-}
-
-export async function updateRole(roleId: string, payload: UpdateRolePayload) {
-  const response = await fetch(apiUrl(`/api/roles/${roleId}`), {
-    body: JSON.stringify(payload),
-    headers: jsonHeaders(),
-    method: 'PATCH',
-  })
-
-  return parseApiResponse<RoleDto>(response)
-}
-
-export async function deleteRole(roleId: string) {
-  const response = await fetch(apiUrl(`/api/roles/${roleId}`), {
-    headers: authHeaders(),
-    method: 'DELETE',
-  })
-
-  await parseApiResponse<void>(response)
-}
-
-export async function updateUserRoles(userId: string, roleIds: string[]) {
-  const response = await fetch(apiUrl(`/api/users/${userId}/roles`), {
-    body: JSON.stringify({ roleIds }),
+export async function updateRolePermissions(
+  roleId: string,
+  permissions: AppPermission[]
+) {
+  const response = await fetch(apiUrl(`/api/roles/${roleId}/permissions`), {
+    body: JSON.stringify({ permissions }),
     headers: jsonHeaders(),
     method: 'PUT',
   })

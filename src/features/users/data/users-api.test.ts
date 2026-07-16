@@ -58,8 +58,7 @@ describe('users API client', () => {
         id: 'user-1',
         lastName: 'User',
         phoneNumber: '',
-        role: 'admin',
-        roleId: 'role-admin',
+        roles: [{ id: 'role-admin', name: 'admin' }],
         status: 'active',
         updatedAt: new Date('2026-06-23T02:00:00.000Z'),
         username: 'admin',
@@ -71,8 +70,7 @@ describe('users API client', () => {
         id: 'user-2',
         lastName: 'User',
         phoneNumber: '',
-        role: 'normal',
-        roleId: 'role-normal',
+        roles: [{ id: 'role-normal', name: 'normal' }],
         status: 'inactive',
         updatedAt: new Date('2026-06-23T04:00:00.000Z'),
         username: 'normal',
@@ -122,7 +120,7 @@ describe('users API client', () => {
     })
   })
 
-  it('creates users with the selected database role name', async () => {
+  it('creates users with every selected database role', async () => {
     fetch.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -130,7 +128,10 @@ describe('users API client', () => {
         email: 'reviewer@example.com',
         id: 'user-reviewer',
         name: 'Resume Reviewer',
-        roles: [{ id: 'role-reviewer', name: 'reviewer' }],
+        roles: [
+          { id: 'role-reviewer', name: 'reviewer' },
+          { id: 'role-normal', name: 'normal' },
+        ],
         status: 'active',
         updatedAt: '2026-06-23T04:00:00.000Z',
       }),
@@ -141,12 +142,15 @@ describe('users API client', () => {
         email: 'reviewer@example.com',
         name: 'Resume Reviewer',
         password: 'S3cur3P@ssw0rd',
-        roleId: 'role-reviewer',
+        roleIds: ['role-reviewer', 'role-normal'],
         status: 'active',
       })
     ).resolves.toMatchObject({
       email: 'reviewer@example.com',
-      role: 'reviewer',
+      roles: [
+        { id: 'role-reviewer', name: 'reviewer' },
+        { id: 'role-normal', name: 'normal' },
+      ],
       username: 'reviewer',
     })
 
@@ -155,7 +159,7 @@ describe('users API client', () => {
         email: 'reviewer@example.com',
         name: 'Resume Reviewer',
         password: 'S3cur3P@ssw0rd',
-        roleIds: ['role-reviewer'],
+        roleIds: ['role-reviewer', 'role-normal'],
         status: 'active',
       }),
       headers: {
@@ -166,7 +170,7 @@ describe('users API client', () => {
     })
   })
 
-  it('updates users and their selected role', async () => {
+  it('updates users and all selected roles', async () => {
     fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -174,7 +178,10 @@ describe('users API client', () => {
         email: 'admin@example.com',
         id: 'user-admin',
         name: 'Admin User',
-        roles: [{ id: 'role-normal', name: 'normal' }],
+        roles: [
+          { id: 'role-normal', name: 'normal' },
+          { id: 'role-reviewer', name: 'reviewer' },
+        ],
         status: 'inactive',
         updatedAt: '2026-06-23T04:00:00.000Z',
       }),
@@ -188,12 +195,15 @@ describe('users API client', () => {
       updateUser('user-admin', {
         email: 'admin@example.com',
         name: 'Admin User',
-        roleId: 'role-normal',
+        roleIds: ['role-normal', 'role-reviewer'],
         status: 'inactive',
       })
     ).resolves.toMatchObject({
       email: 'admin@example.com',
-      role: 'normal',
+      roles: [
+        { id: 'role-normal', name: 'normal' },
+        { id: 'role-reviewer', name: 'reviewer' },
+      ],
       status: 'inactive',
     })
 
@@ -212,7 +222,7 @@ describe('users API client', () => {
     })
     expect(fetch).toHaveBeenNthCalledWith(2, '/api/users/user-admin/roles', {
       body: JSON.stringify({
-        roleIds: ['role-normal'],
+        roleIds: ['role-normal', 'role-reviewer'],
       }),
       headers: {
         Authorization: 'Bearer session-token',

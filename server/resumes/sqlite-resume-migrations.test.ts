@@ -53,6 +53,9 @@ describe('migrateResumeDatabase', () => {
     expect(migrations.map((migration) => migration.name)).toContain(
       '20260716000000_add_pages_view_permission'
     )
+    expect(migrations.map((migration) => migration.name)).toContain(
+      '20260717000000_add_role_timestamps'
+    )
 
     const resumeColumns = database
       .prepare('PRAGMA table_info(resumes)')
@@ -60,6 +63,11 @@ describe('migrateResumeDatabase', () => {
     const permissions = database
       .prepare('SELECT name FROM t_permissions ORDER BY name')
       .all() as Array<{ name: string }>
+    const roleColumns = database.prepare('PRAGMA table_info(t_roles)').all() as
+      Array<{ name: string }>
+    const roles = database
+      .prepare('SELECT created_at, updated_at FROM t_roles')
+      .all() as Array<{ created_at: string; updated_at: string }>
 
     expect(resumeColumns.map((column) => column.name)).toContain(
       'job_position_id'
@@ -71,6 +79,13 @@ describe('migrateResumeDatabase', () => {
         'pages:view',
       ])
     )
+    expect(roleColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(['created_at', 'updated_at'])
+    )
+    expect(roles.length).toBeGreaterThan(0)
+    expect(
+      roles.every((role) => role.created_at && role.updated_at)
+    ).toBe(true)
 
     database.close()
   })

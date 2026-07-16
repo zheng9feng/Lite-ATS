@@ -1,11 +1,19 @@
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
 import { clearCookies } from '@/test-utils/cookies'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
+import { userEvent } from 'vitest/browser'
 import { LanguageProvider } from '@/context/language-provider'
-import { type PermissionResources } from './data/permissions-api'
+import { type PermissionAssignmentData } from './data/permissions-api'
 import { PermissionsPage } from './permissions-page'
 
-const permissionResources: PermissionResources = {
+const permissionData: PermissionAssignmentData = {
   permissionsByResource: [
     {
       resource: 'resumes',
@@ -41,89 +49,88 @@ const permissionResources: PermissionResources = {
   ],
   roles: [
     {
+      createdAt: '2026-07-17T01:00:00.000Z',
       description: 'Full access.',
       id: 'role-admin',
       isSystem: true,
       name: 'admin',
       permissions: ['rbac:manage', 'resumes:read', 'resumes:share'],
+      updatedAt: '2026-07-17T01:00:00.000Z',
       userCount: 1,
     },
     {
+      createdAt: '2026-07-17T01:00:00.000Z',
       description: 'Review resumes.',
       id: 'role-reviewer',
       isSystem: false,
       name: 'reviewer',
       permissions: ['resumes:read'],
+      updatedAt: '2026-07-17T01:00:00.000Z',
       userCount: 1,
     },
   ],
-  users: [
-    {
-      createdAt: '2026-06-24T01:00:00.000Z',
-      email: 'reviewer@example.com',
-      id: 'user-1',
-      name: 'Resume Reviewer',
-      permissions: ['resumes:read'],
-      roles: [
-        {
-          description: 'Review resumes.',
-          id: 'role-reviewer',
-          isSystem: false,
-          name: 'reviewer',
-        },
-      ],
-      status: 'active',
-      updatedAt: '2026-06-24T02:00:00.000Z',
-    },
-  ],
+}
+
+function renderPermissionsPage(roleId = 'role-admin') {
+  const rootRoute = createRootRoute()
+  const permissionsRoute = createRoute({
+    component: () => (
+      <LanguageProvider>
+        <PermissionsPage data={permissionData} requestedRoleId={roleId} />
+      </LanguageProvider>
+    ),
+    getParentRoute: () => rootRoute,
+    path: '/permissions',
+  })
+  const rolesRoute = createRoute({
+    component: () => <div>Roles</div>,
+    getParentRoute: () => rootRoute,
+    path: '/roles',
+  })
+  const router = createRouter({
+    history: createMemoryHistory({
+      initialEntries: [`/permissions?roleId=${roleId}`],
+    }),
+    routeTree: rootRoute.addChildren([permissionsRoute, rolesRoute]),
+  })
+
+  return render(<RouterProvider router={router} />)
 }
 
 describe('PermissionsPage', () => {
   beforeEach(() => {
     clearCookies()
+    vi.clearAllMocks()
   })
 
-  it('renders role configuration and user role management in Chinese by default', async () => {
-    const { getByRole, getByText } = await render(
-      <LanguageProvider>
-        <PermissionsPage
-          initialData={permissionResources}
-          onRefresh={vi.fn()}
-        />
-      </LanguageProvider>
+  it('renders the hierarchical assignment tree in Chinese by default', async () => {
+    const screen = await renderPermissionsPage()
+
+    await expect.element(screen.getByText('权限管理')).toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('checkbox', { name: '全部权限' }))
+      .toBeChecked()
+    await expect
+      .element(screen.getByRole('checkbox', { exact: true, name: '权限' }))
+      .toBeDisabled()
+    await expect.element(screen.getByText('resumes:read')).toBeInTheDocument()
+    await expect.element(screen.getByText('rbac:manage')).toBeInTheDocument()
+  })
+
+  it('filters permission leaves while retaining their resource ancestor', async () => {
+    const screen = await renderPermissionsPage('role-reviewer')
+
+    await userEvent.fill(
+      screen.getByRole('textbox', { name: '搜索权限' }),
+      'share'
     )
 
-    await expect.element(getByText('权限管理')).toBeInTheDocument()
     await expect
-      .element(getByRole('tab', { name: '角色配置' }))
+      .element(screen.getByText('简历', { exact: true }).first())
       .toBeInTheDocument()
+    await expect.element(screen.getByText('resumes:share')).toBeInTheDocument()
     await expect
-      .element(getByRole('tab', { name: '用户角色' }))
-      .toBeInTheDocument()
-    await expect.element(getByText('系统角色')).toBeInTheDocument()
-    await expect
-      .element(
-        getByText(
-          '拥有用户管理、权限配置、示例页面和简历管理的完整访问权限。'
-        )
-      )
-      .toBeInTheDocument()
-    await expect.element(getByText('Review resumes.')).toBeInTheDocument()
-    await expect
-      .element(getByRole('heading', { name: '简历' }))
-      .toBeInTheDocument()
-    await expect.element(getByText('resumes:read')).toBeInTheDocument()
-    await expect.element(getByText('查看简历和简历文件。')).toBeInTheDocument()
-    await expect
-      .element(getByRole('heading', { exact: true, name: '权限' }))
-      .toBeInTheDocument()
-    await expect.element(getByText('管理角色和权限分配。')).toBeInTheDocument()
-
-    await getByRole('tab', { name: '用户角色' }).click()
-
-    await expect.element(getByText('Resume Reviewer')).toBeInTheDocument()
-    await expect.element(getByText('reviewer@example.com')).toBeInTheDocument()
-    await expect.element(getByText('有效权限')).toBeInTheDocument()
-    await expect.element(getByText('resumes:read')).toBeInTheDocument()
+      .element(screen.getByText('resumes:read'))
+      .not.toBeInTheDocument()
   })
 })

@@ -1,153 +1,265 @@
-import { type FormEvent, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Link,
+  useBlocker,
+  useNavigate,
+  useRouter,
+} from '@tanstack/react-router'
 import { type TFunction } from 'i18next'
-import { Plus, Save, Trash2 } from 'lucide-react'
+import {
+  BriefcaseBusiness,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Info,
+  KeyRound,
+  LockKeyhole,
+  PanelsTopLeft,
+  Search,
+  Users,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { type AppPermission } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
 import {
-  createRole,
-  deleteRole,
-  type PermissionResources,
-  type RoleDto,
-  type RoleSummary,
-  updateRole,
-  updateUserRoles,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import {
+  type PermissionAssignmentData,
+  type PermissionOption,
+  type PermissionResourceGroup,
+  updateRolePermissions,
 } from './data/permissions-api'
 
 type PermissionsPageProps = {
-  initialData: PermissionResources
-  onRefresh: () => void | Promise<void>
+  data: PermissionAssignmentData
+  requestedRoleId?: string
 }
 
-type RoleDraft = {
-  description: string
-  name: string
-  permissions: AppPermission[]
-}
+const resourceIcons = {
+  'job-positions': BriefcaseBusiness,
+  pages: PanelsTopLeft,
+  rbac: KeyRound,
+  resumes: FileText,
+  users: Users,
+} as const
 
-function createEmptyRoleDraft(): RoleDraft {
-  return {
-    description: '',
-    name: '',
-    permissions: [],
-  }
-}
-
-function createRoleDraft(role: RoleDto): RoleDraft {
-  return {
-    description: role.description,
-    name: role.name,
-    permissions: role.permissions,
-  }
-}
-
-function toggleValue<T>(values: T[], value: T) {
-  return values.includes(value)
-    ? values.filter((item) => item !== value)
-    : [...values, value]
-}
-
-function roleNames(roles: RoleSummary[]) {
-  return roles.map((role) => role.name).join(', ')
-}
-
-function translatePermissionDescription(
-  t: TFunction,
-  permission: { description: string; name: AppPermission }
-) {
-  const permissionKey = permission.name.replace(':', '.')
-
-  return t(`permissionsPage.permissionDescriptions.${permissionKey}`, {
-    defaultValue: permission.description,
-  })
-}
-
-function translateResourceName(t: TFunction, resource: string) {
+function translatedResource(t: TFunction, resource: string) {
   return t(`permissionsPage.resources.${resource}`, {
     defaultValue: resource,
   })
 }
 
-function translateRoleDescription(t: TFunction, role: RoleSummary) {
-  return t(`permissionsPage.roles.${role.name}.description`, {
-    defaultValue: role.description,
-  })
+function translatedPermissionLabel(t: TFunction, permission: PermissionOption) {
+  return t(
+    `permissionsPage.permissionLabels.${permission.resource}.${permission.action}`,
+    { defaultValue: permission.action }
+  )
 }
 
-function translateUserStatus(
+function translatedPermissionDescription(
   t: TFunction,
-  status: PermissionResources['users'][number]['status']
+  permission: PermissionOption
 ) {
-  return t(`permissionsPage.userStatus.${status}`, {
-    defaultValue: status,
-  })
+  return t(
+    `permissionsPage.permissionDescriptions.${permission.resource}.${permission.action}`,
+    { defaultValue: permission.description }
+  )
+}
+
+function samePermissions(left: AppPermission[], right: AppPermission[]) {
+  if (left.length !== right.length) return false
+
+  const rightSet = new Set(right)
+  return left.every((permission) => rightSet.has(permission))
+}
+
+function checkboxState(selectedCount: number, totalCount: number) {
+  if (selectedCount === 0) return false
+  if (selectedCount === totalCount) return true
+  return 'indeterminate' as const
+}
+
+function permissionMatches(
+  permission: PermissionOption,
+  query: string,
+  t: TFunction
+) {
+  return [
+    permission.name,
+    permission.description,
+    translatedPermissionLabel(t, permission),
+    translatedPermissionDescription(t, permission),
+  ].some((value) => value.toLocaleLowerCase().includes(query))
 }
 
 export function PermissionsPage({
-  initialData,
-  onRefresh,
+  data,
+  requestedRoleId,
 }: PermissionsPageProps) {
   const { t } = useTranslation()
-  const [data, setData] = useState(initialData)
-  const [selectedRoleId, setSelectedRoleId] = useState(
-    initialData.roles[0]?.id ?? ''
-  )
+  const navigate = useNavigate()
+  const router = useRouter()
   const selectedRole =
-    data.roles.find((role) => role.id === selectedRoleId) ?? data.roles[0]
-  const [roleDraft, setRoleDraft] = useState<RoleDraft>(
-    selectedRole ? createRoleDraft(selectedRole) : createEmptyRoleDraft()
+    data.roles.find((role) => role.id === requestedRoleId) ?? data.roles[0]
+  const [savedPermissions, setSavedPermissions] = useState<AppPermission[]>(
+    selectedRole?.permissions ?? []
   )
-  const [newRoleDraft, setNewRoleDraft] = useState(createEmptyRoleDraft)
-  const [userRoleDrafts, setUserRoleDrafts] = useState<
-    Record<string, string[]>
-  >(() =>
-    Object.fromEntries(
-      initialData.users.map((user) => [
-        user.id,
-        user.roles.map((role) => role.id),
-      ])
-    )
+  const [draftPermissions, setDraftPermissions] = useState<AppPermission[]>(
+    selectedRole?.permissions ?? []
   )
-  const [error, setError] = useState('')
+  const [query, setQuery] = useState('')
+  const [rootOpen, setRootOpen] = useState(true)
+  const [expandedResources, setExpandedResources] = useState<Set<string>>(
+    () => new Set(data.permissionsByResource.map((group) => group.resource))
+  )
   const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState('')
+  const isDirty = !samePermissions(savedPermissions, draftPermissions)
+  const blocker = useBlocker({
+    shouldBlockFn: () => isDirty,
+    enableBeforeUnload: isDirty,
+    withResolver: true,
+  })
 
-  const roleLookup = useMemo(
-    () => new Map(data.roles.map((role) => [role.id, role])),
-    [data.roles]
+  useEffect(() => {
+    if (!selectedRole || requestedRoleId === selectedRole.id) return
+
+    navigate({
+      to: '/permissions',
+      search: { roleId: selectedRole.id },
+      replace: true,
+    })
+  }, [navigate, requestedRoleId, selectedRole])
+
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  const visibleGroups = useMemo(() => {
+    if (!normalizedQuery) return data.permissionsByResource
+
+    return data.permissionsByResource.flatMap((group) => {
+      const resourceMatches = [
+        group.resource,
+        translatedResource(t, group.resource),
+      ].some((value) => value.toLocaleLowerCase().includes(normalizedQuery))
+      const permissions = resourceMatches
+        ? group.permissions
+        : group.permissions.filter((permission) =>
+            permissionMatches(permission, normalizedQuery, t)
+          )
+
+      return permissions.length ? [{ ...group, permissions }] : []
+    })
+  }, [data.permissionsByResource, normalizedQuery, t])
+
+  const allPermissions = useMemo(
+    () =>
+      data.permissionsByResource.flatMap((group) =>
+        group.permissions.map((permission) => permission.name)
+      ),
+    [data.permissionsByResource]
+  )
+  const selectedSet = useMemo(
+    () => new Set(draftPermissions),
+    [draftPermissions]
+  )
+  const lockedPermissions = useMemo(
+    () =>
+      new Set<AppPermission>(
+        selectedRole?.name === 'admin' ? ['rbac:manage'] : []
+      ),
+    [selectedRole?.name]
   )
 
-  function selectRole(role: RoleDto) {
-    setSelectedRoleId(role.id)
-    setRoleDraft(createRoleDraft(role))
+  function togglePermission(permission: AppPermission) {
+    if (lockedPermissions.has(permission)) return
+
+    setDraftPermissions((current) =>
+      current.includes(permission)
+        ? current.filter((item) => item !== permission)
+        : [...current, permission]
+    )
   }
 
-  async function runMutation(action: () => Promise<void>) {
+  function togglePermissions(permissions: AppPermission[]) {
+    const mutablePermissions = permissions.filter(
+      (permission) => !lockedPermissions.has(permission)
+    )
+    const allMutableSelected = mutablePermissions.every((permission) =>
+      selectedSet.has(permission)
+    )
+
+    setDraftPermissions((current) => {
+      const next = new Set(current)
+
+      for (const permission of mutablePermissions) {
+        if (allMutableSelected) next.delete(permission)
+        else next.add(permission)
+      }
+
+      for (const permission of lockedPermissions) next.add(permission)
+
+      return Array.from(next)
+    })
+  }
+
+  function setAllExpanded(expanded: boolean) {
+    setRootOpen(true)
+    setExpandedResources(
+      expanded
+        ? new Set(data.permissionsByResource.map((group) => group.resource))
+        : new Set()
+    )
+  }
+
+  function changeRole(roleId: string) {
+    navigate({
+      to: '/permissions',
+      search: { roleId },
+    })
+  }
+
+  async function savePermissions() {
+    if (!selectedRole || !isDirty) return
+
     setIsSaving(true)
     setError('')
 
     try {
-      await action()
-      await onRefresh()
-    } catch (mutationError) {
+      await updateRolePermissions(selectedRole.id, draftPermissions)
+      setSavedPermissions(draftPermissions)
+      toast.success(t('permissionsPage.feedback.saved'))
+      await router.invalidate()
+    } catch (reason) {
       setError(
-        mutationError instanceof Error
-          ? mutationError.message
+        reason instanceof Error
+          ? reason.message
           : t('permissionsPage.api.failed')
       )
     } finally {
@@ -155,92 +267,29 @@ export function PermissionsPage({
     }
   }
 
-  async function handleCreateRole(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    await runMutation(async () => {
-      const role = await createRole(newRoleDraft)
-      setData((currentData) => ({
-        ...currentData,
-        roles: [...currentData.roles, role],
-      }))
-      setSelectedRoleId(role.id)
-      setRoleDraft(createRoleDraft(role))
-      setNewRoleDraft(createEmptyRoleDraft())
-    })
+  if (!selectedRole) {
+    return (
+      <div className='access-control-theme flex min-h-96 flex-col items-center justify-center gap-4 rounded-xl border text-center'>
+        <div className='flex flex-col gap-1'>
+          <h2 className='text-xl font-semibold'>
+            {t('permissionsPage.empty.title')}
+          </h2>
+          <p className='text-sm text-muted-foreground'>
+            {t('permissionsPage.empty.description')}
+          </p>
+        </div>
+        <Button asChild>
+          <Link to='/roles'>{t('permissionsPage.empty.action')}</Link>
+        </Button>
+      </div>
+    )
   }
 
-  async function handleSaveRole(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    if (!selectedRole) return
-
-    await runMutation(async () => {
-      const role = await updateRole(selectedRole.id, {
-        description: roleDraft.description,
-        name: selectedRole.isSystem ? undefined : roleDraft.name,
-        permissions: roleDraft.permissions,
-      })
-
-      setData((currentData) => ({
-        ...currentData,
-        roles: currentData.roles.map((item) =>
-          item.id === role.id ? role : item
-        ),
-      }))
-      setSelectedRoleId(role.id)
-      setRoleDraft(createRoleDraft(role))
-    })
-  }
-
-  async function handleDeleteRole() {
-    if (!selectedRole) return
-
-    await runMutation(async () => {
-      await deleteRole(selectedRole.id)
-      setData((currentData) => ({
-        ...currentData,
-        roles: currentData.roles.filter((role) => role.id !== selectedRole.id),
-      }))
-      const nextRole = data.roles.find((role) => role.id !== selectedRole.id)
-      setSelectedRoleId(nextRole?.id ?? '')
-      setRoleDraft(
-        nextRole ? createRoleDraft(nextRole) : createEmptyRoleDraft()
-      )
-    })
-  }
-
-  async function handleSaveUserRoles(userId: string) {
-    const roleIds = userRoleDrafts[userId] ?? []
-
-    await runMutation(async () => {
-      await updateUserRoles(userId, roleIds)
-      setData((currentData) => ({
-        ...currentData,
-        users: currentData.users.map((user) =>
-          user.id === userId
-            ? {
-                ...user,
-                permissions: Array.from(
-                  new Set(
-                    roleIds.flatMap(
-                      (roleId) => roleLookup.get(roleId)?.permissions ?? []
-                    )
-                  )
-                ).sort(),
-                roles: roleIds
-                  .map((roleId) => roleLookup.get(roleId))
-                  .filter((role): role is RoleDto => Boolean(role)),
-              }
-            : user
-        ),
-      }))
-    })
-  }
+  const selectedCount = draftPermissions.length
 
   return (
-    <div className='flex flex-col gap-4 sm:gap-6'>
-      <div>
+    <div className='access-control-theme flex flex-col gap-6'>
+      <div className='flex flex-col gap-1'>
         <h2 className='text-2xl font-bold tracking-tight'>
           {t('permissionsPage.title')}
         </h2>
@@ -249,308 +298,358 @@ export function PermissionsPage({
         </p>
       </div>
 
-      {error && (
+      {error ? (
         <Alert variant='destructive'>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      )}
+      ) : null}
 
-      <Tabs defaultValue='roles' className='gap-4'>
-        <TabsList>
-          <TabsTrigger value='roles'>
-            {t('permissionsPage.tabs.roles')}
-          </TabsTrigger>
-          <TabsTrigger value='users'>
-            {t('permissionsPage.tabs.users')}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value='roles' className='flex flex-col gap-4'>
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('permissionsPage.createRole.title')}</CardTitle>
-              <CardDescription>
-                {t('permissionsPage.createRole.description')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form
-                className='grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]'
-                onSubmit={handleCreateRole}
-              >
-                <div className='flex flex-col gap-2'>
-                  <Label htmlFor='new-role-name'>
-                    {t('permissionsPage.fields.roleName')}
-                  </Label>
-                  <Input
-                    id='new-role-name'
-                    value={newRoleDraft.name}
-                    onChange={(event) =>
-                      setNewRoleDraft((draft) => ({
-                        ...draft,
-                        name: event.target.value,
-                      }))
-                    }
-                    required
-                  />
-                </div>
-                <div className='flex flex-col gap-2'>
-                  <Label htmlFor='new-role-description'>
-                    {t('permissionsPage.fields.description')}
-                  </Label>
-                  <Input
-                    id='new-role-description'
-                    value={newRoleDraft.description}
-                    onChange={(event) =>
-                      setNewRoleDraft((draft) => ({
-                        ...draft,
-                        description: event.target.value,
-                      }))
-                    }
-                    required
-                  />
-                </div>
-                <div className='flex items-end'>
-                  <Button type='submit' disabled={isSaving}>
-                    <Plus data-icon='inline-start' />
-                    {t('permissionsPage.actions.create')}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-
-          <div className='grid gap-4 lg:grid-cols-[minmax(16rem,20rem)_1fr]'>
-            <div className='flex flex-col gap-3'>
+      <div className='flex max-w-sm flex-col gap-2'>
+        <Label htmlFor='role-select'>{t('permissionsPage.role.label')}</Label>
+        <Select value={selectedRole.id} onValueChange={changeRole}>
+          <SelectTrigger id='role-select' className='w-full'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
               {data.roles.map((role) => (
-                <button
-                  key={role.id}
-                  type='button'
-                  onClick={() => selectRole(role)}
-                  className={cn(
-                    'rounded-lg border bg-card p-4 text-start transition-colors hover:bg-muted',
-                    selectedRole?.id === role.id && 'border-primary'
-                  )}
-                >
-                  <div className='flex items-center justify-between gap-2'>
-                    <span className='font-medium'>{role.name}</span>
-                    {role.isSystem && (
-                      <Badge variant='secondary'>
-                        {t('permissionsPage.systemRole')}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className='mt-1 line-clamp-2 text-sm text-muted-foreground'>
-                    {translateRoleDescription(t, role)}
-                  </p>
-                  <p className='mt-2 text-xs text-muted-foreground'>
-                    {t('permissionsPage.userCount', {
-                      count: role.userCount,
-                    })}
-                  </p>
-                </button>
+                <SelectItem key={role.id} value={role.id}>
+                  {role.name}
+                </SelectItem>
               ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <p className='text-xs text-muted-foreground'>
+          {selectedRole.isSystem
+            ? t('permissionsPage.role.systemMeta', {
+                count: selectedRole.userCount,
+              })
+            : t('permissionsPage.role.customMeta', {
+                count: selectedRole.userCount,
+              })}
+        </p>
+      </div>
+
+      <Separator />
+
+      <div className='grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_18rem]'>
+        <section className='min-w-0'>
+          <div className='flex flex-col gap-3 pb-4 sm:flex-row sm:items-center sm:justify-between'>
+            <div className='relative w-full sm:max-w-xs'>
+              <Search className='pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+              <Input
+                aria-label={t('permissionsPage.search')}
+                className='ps-9'
+                placeholder={t('permissionsPage.search')}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
             </div>
-
-            {selectedRole && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>{selectedRole.name}</CardTitle>
-                  <CardDescription>
-                    {t('permissionsPage.roleEditor.description')}
-                  </CardDescription>
-                  <CardAction>
-                    <Button
-                      type='button'
-                      variant='destructive'
-                      size='sm'
-                      disabled={
-                        isSaving ||
-                        selectedRole.isSystem ||
-                        selectedRole.userCount > 0
-                      }
-                      onClick={handleDeleteRole}
-                    >
-                      <Trash2 data-icon='inline-start' />
-                      {t('permissionsPage.actions.delete')}
-                    </Button>
-                  </CardAction>
-                </CardHeader>
-                <CardContent>
-                  <form
-                    className='flex flex-col gap-4'
-                    onSubmit={handleSaveRole}
-                  >
-                    <div className='grid gap-4 md:grid-cols-2'>
-                      <div className='flex flex-col gap-2'>
-                        <Label htmlFor='role-name'>
-                          {t('permissionsPage.fields.roleName')}
-                        </Label>
-                        <Input
-                          id='role-name'
-                          value={roleDraft.name}
-                          disabled={selectedRole.isSystem}
-                          onChange={(event) =>
-                            setRoleDraft((draft) => ({
-                              ...draft,
-                              name: event.target.value,
-                            }))
-                          }
-                          required
-                        />
-                      </div>
-                      <div className='flex flex-col gap-2'>
-                        <Label htmlFor='role-description'>
-                          {t('permissionsPage.fields.description')}
-                        </Label>
-                        <Textarea
-                          id='role-description'
-                          value={roleDraft.description}
-                          onChange={(event) =>
-                            setRoleDraft((draft) => ({
-                              ...draft,
-                              description: event.target.value,
-                            }))
-                          }
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-3'>
-                      {data.permissionsByResource.map((group) => (
-                        <section
-                          key={group.resource}
-                          className='rounded-lg border p-4'
-                        >
-                          <h3 className='font-medium'>
-                            {translateResourceName(t, group.resource)}
-                          </h3>
-                          <div className='mt-3 flex flex-col gap-3'>
-                            {group.permissions.map((permission) => (
-                              <label
-                                key={permission.id}
-                                className='flex items-start gap-2 text-sm'
-                              >
-                                <Checkbox
-                                  checked={roleDraft.permissions.includes(
-                                    permission.name
-                                  )}
-                                  onCheckedChange={() =>
-                                    setRoleDraft((draft) => ({
-                                      ...draft,
-                                      permissions: toggleValue(
-                                        draft.permissions,
-                                        permission.name
-                                      ),
-                                    }))
-                                  }
-                                />
-                                <span>
-                                  <span className='block font-medium'>
-                                    {permission.name}
-                                  </span>
-                                  <span className='text-muted-foreground'>
-                                    {translatePermissionDescription(
-                                      t,
-                                      permission
-                                    )}
-                                  </span>
-                                </span>
-                              </label>
-                            ))}
-                          </div>
-                        </section>
-                      ))}
-                    </div>
-
-                    <div>
-                      <Button type='submit' disabled={isSaving}>
-                        <Save data-icon='inline-start' />
-                        {t('permissionsPage.actions.save')}
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-            )}
+            <div className='flex gap-2'>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={() => setAllExpanded(true)}
+              >
+                {t('permissionsPage.actions.expandAll')}
+              </Button>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={() => setAllExpanded(false)}
+              >
+                {t('permissionsPage.actions.collapseAll')}
+              </Button>
+            </div>
           </div>
-        </TabsContent>
 
-        <TabsContent value='users' className='grid gap-4 xl:grid-cols-2'>
-          {data.users.map((user) => {
-            const draftRoleIds =
-              userRoleDrafts[user.id] ?? user.roles.map((role) => role.id)
+          <div className='overflow-hidden rounded-lg border bg-card/30'>
+            <Collapsible
+              open={normalizedQuery ? true : rootOpen}
+              onOpenChange={setRootOpen}
+            >
+              <div className='flex min-h-12 items-center gap-3 border-b px-4'>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon'
+                    aria-label={t('permissionsPage.actions.toggleAll')}
+                  >
+                    {rootOpen || normalizedQuery ? (
+                      <ChevronDown />
+                    ) : (
+                      <ChevronRight />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <Checkbox
+                  aria-label={t('permissionsPage.tree.all')}
+                  checked={checkboxState(selectedCount, allPermissions.length)}
+                  onCheckedChange={() => togglePermissions(allPermissions)}
+                />
+                <span className='font-medium'>
+                  {t('permissionsPage.tree.all')}
+                </span>
+                <span className='ms-auto text-sm text-muted-foreground'>
+                  {allPermissions.length}
+                </span>
+              </div>
+
+              <CollapsibleContent>
+                {visibleGroups.length ? (
+                  visibleGroups.map((group) => (
+                    <PermissionGroup
+                      key={group.resource}
+                      group={group}
+                      open={
+                        normalizedQuery
+                          ? true
+                          : expandedResources.has(group.resource)
+                      }
+                      selectedSet={selectedSet}
+                      lockedPermissions={lockedPermissions}
+                      onOpenChange={(open) =>
+                        setExpandedResources((current) => {
+                          const next = new Set(current)
+                          if (open) next.add(group.resource)
+                          else next.delete(group.resource)
+                          return next
+                        })
+                      }
+                      onToggleGroup={() =>
+                        togglePermissions(
+                          group.permissions.map((permission) => permission.name)
+                        )
+                      }
+                      onTogglePermission={togglePermission}
+                      t={t}
+                    />
+                  ))
+                ) : (
+                  <div className='px-4 py-12 text-center text-sm text-muted-foreground'>
+                    {t('permissionsPage.emptySearch')}
+                  </div>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        </section>
+
+        <aside className='hidden rounded-xl border bg-card/40 p-5 xl:block'>
+          <h3 className='text-sm font-medium'>
+            {t('permissionsPage.summary.title')}
+          </h3>
+          <p className='mt-2 text-3xl font-semibold tracking-tight'>
+            {selectedCount} / {allPermissions.length}
+          </p>
+          <p className='mt-1 text-xs text-muted-foreground'>
+            {t('permissionsPage.summary.byResource')}
+          </p>
+          <Separator className='my-5' />
+          <div className='flex flex-col gap-4'>
+            {data.permissionsByResource.map((group) => {
+              const Icon =
+                resourceIcons[group.resource as keyof typeof resourceIcons] ??
+                KeyRound
+              const groupSelected = group.permissions.filter((permission) =>
+                selectedSet.has(permission.name)
+              ).length
+
+              return (
+                <div
+                  key={group.resource}
+                  className='flex items-center gap-3 text-sm'
+                >
+                  <Icon className='size-4 text-muted-foreground' />
+                  <span>{translatedResource(t, group.resource)}</span>
+                  <span className='ms-auto text-muted-foreground'>
+                    {groupSelected} / {group.permissions.length}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <Separator className='my-5' />
+          <p className='flex items-start gap-2 text-xs text-muted-foreground'>
+            <Info className='size-4 shrink-0' />
+            {t('permissionsPage.summary.impact')}
+          </p>
+        </aside>
+      </div>
+
+      <div className='sticky bottom-4 flex flex-col gap-3 rounded-xl border bg-background/95 px-5 py-4 shadow-lg backdrop-blur sm:flex-row sm:items-center'>
+        <div className='flex items-center gap-2 text-sm'>
+          <span>{t('permissionsPage.summary.selected')}</span>
+          <strong className='text-primary'>
+            {selectedCount} / {allPermissions.length}
+          </strong>
+          <span className='text-muted-foreground'>
+            {t('permissionsPage.summary.permissions')}
+          </span>
+          {isDirty ? (
+            <span className='ms-2 flex items-center gap-2 text-xs text-muted-foreground'>
+              <span className='size-1.5 rounded-full bg-primary' />
+              {t('permissionsPage.summary.unsaved')}
+            </span>
+          ) : null}
+        </div>
+        <div className='flex gap-2 sm:ms-auto'>
+          <Button
+            type='button'
+            variant='outline'
+            disabled={!isDirty || isSaving}
+            onClick={() => setDraftPermissions(savedPermissions)}
+          >
+            {t('permissionsPage.actions.discard')}
+          </Button>
+          <Button
+            type='button'
+            disabled={!isDirty || isSaving}
+            onClick={savePermissions}
+          >
+            {isSaving
+              ? t('permissionsPage.actions.saving')
+              : t('permissionsPage.actions.save')}
+          </Button>
+        </div>
+      </div>
+
+      <AlertDialog
+        open={blocker.status === 'blocked'}
+        onOpenChange={(open) => {
+          if (!open && blocker.status === 'blocked') blocker.reset()
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t('permissionsPage.unsaved.title')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('permissionsPage.unsaved.description')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t('permissionsPage.unsaved.stay')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setDraftPermissions(savedPermissions)
+                if (blocker.status === 'blocked') blocker.proceed()
+              }}
+            >
+              {t('permissionsPage.unsaved.leave')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
+
+type PermissionGroupProps = {
+  group: PermissionResourceGroup
+  lockedPermissions: Set<AppPermission>
+  onOpenChange: (open: boolean) => void
+  onToggleGroup: () => void
+  onTogglePermission: (permission: AppPermission) => void
+  open: boolean
+  selectedSet: Set<AppPermission>
+  t: TFunction
+}
+
+function PermissionGroup({
+  group,
+  lockedPermissions,
+  onOpenChange,
+  onToggleGroup,
+  onTogglePermission,
+  open,
+  selectedSet,
+  t,
+}: PermissionGroupProps) {
+  const selectedCount = group.permissions.filter((permission) =>
+    selectedSet.has(permission.name)
+  ).length
+  const Icon =
+    resourceIcons[group.resource as keyof typeof resourceIcons] ?? KeyRound
+  const mutableCount = group.permissions.filter(
+    (permission) => !lockedPermissions.has(permission.name)
+  ).length
+
+  return (
+    <Collapsible open={open} onOpenChange={onOpenChange}>
+      <div className='flex min-h-12 items-center gap-3 border-b px-4 ps-8'>
+        <CollapsibleTrigger asChild>
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon'
+            aria-label={t('permissionsPage.actions.toggleResource', {
+              resource: translatedResource(t, group.resource),
+            })}
+          >
+            {open ? <ChevronDown /> : <ChevronRight />}
+          </Button>
+        </CollapsibleTrigger>
+        <Checkbox
+          aria-label={translatedResource(t, group.resource)}
+          checked={checkboxState(selectedCount, group.permissions.length)}
+          disabled={mutableCount === 0}
+          onCheckedChange={onToggleGroup}
+        />
+        <Icon className='size-4 text-muted-foreground' />
+        <span className='font-medium'>
+          {translatedResource(t, group.resource)}
+        </span>
+        <span className='ms-auto text-sm text-muted-foreground'>
+          {selectedCount} / {group.permissions.length}
+        </span>
+      </div>
+
+      <CollapsibleContent>
+        <div className='ms-14 border-s border-dashed'>
+          {group.permissions.map((permission) => {
+            const locked = lockedPermissions.has(permission.name)
 
             return (
-              <Card key={user.id}>
-                <CardHeader>
-                  <CardTitle>{user.name}</CardTitle>
-                  <CardDescription>{user.email}</CardDescription>
-                  <CardAction>
-                    <Badge variant='outline'>
-                      {translateUserStatus(t, user.status)}
-                    </Badge>
-                  </CardAction>
-                </CardHeader>
-                <CardContent className='flex flex-col gap-4'>
-                  <div>
-                    <h3 className='text-sm font-medium'>
-                      {t('permissionsPage.userRoles.assignedRoles')}
-                    </h3>
-                    <div className='mt-3 grid gap-2 sm:grid-cols-2'>
-                      {data.roles.map((role) => (
-                        <label
-                          key={role.id}
-                          className='flex items-center gap-2 rounded-md border p-3 text-sm'
-                        >
-                          <Checkbox
-                            checked={draftRoleIds.includes(role.id)}
-                            onCheckedChange={() =>
-                              setUserRoleDrafts((drafts) => ({
-                                ...drafts,
-                                [user.id]: toggleValue(draftRoleIds, role.id),
-                              }))
-                            }
-                          />
-                          <span>{role.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <p className='mt-2 text-sm text-muted-foreground'>
-                      {roleNames(user.roles)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className='text-sm font-medium'>
-                      {t('permissionsPage.userRoles.effectivePermissions')}
-                    </h3>
-                    <div className='mt-2 flex flex-wrap gap-2'>
-                      {user.permissions.map((permission) => (
-                        <Badge key={permission} variant='secondary'>
-                          {permission}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Button
-                      type='button'
-                      disabled={isSaving}
-                      onClick={() => handleSaveUserRoles(user.id)}
-                    >
-                      <Save data-icon='inline-start' />
-                      {t('permissionsPage.actions.save')}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <label
+                key={permission.id}
+                className={cn(
+                  'grid min-h-14 cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 border-b px-4 py-3 last:border-b-0 sm:grid-cols-[auto_minmax(8rem,0.8fr)_minmax(12rem,1fr)_minmax(10rem,0.7fr)] sm:items-center',
+                  locked && 'cursor-not-allowed'
+                )}
+              >
+                <Checkbox
+                  checked={selectedSet.has(permission.name)}
+                  disabled={locked}
+                  onCheckedChange={() => onTogglePermission(permission.name)}
+                />
+                <span className='font-medium'>
+                  {translatedPermissionLabel(t, permission)}
+                </span>
+                <span className='col-start-2 text-sm text-muted-foreground sm:col-start-auto'>
+                  {translatedPermissionDescription(t, permission)}
+                </span>
+                <span className='col-start-2 flex items-center gap-2 font-mono text-xs text-muted-foreground sm:col-start-auto'>
+                  {permission.name}
+                  {locked ? <LockKeyhole className='size-3.5' /> : null}
+                </span>
+                {locked ? (
+                  <span className='col-start-2 text-xs text-muted-foreground sm:col-span-3'>
+                    {t('permissionsPage.tree.adminLock')}
+                  </span>
+                ) : null}
+              </label>
             )
           })}
-        </TabsContent>
-      </Tabs>
-    </div>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }

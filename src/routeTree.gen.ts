@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ClerkRouteRouteImport } from './routes/clerk/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedRolesRouteImport } from './routes/_authenticated/roles'
 import { Route as AuthenticatedPermissionsRouteImport } from './routes/_authenticated/permissions'
 import { Route as AuthenticatedJobPositionsRouteImport } from './routes/_authenticated/job-positions'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
@@ -53,6 +54,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRolesRoute = AuthenticatedRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPermissionsRoute =
@@ -223,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503Route
   '/job-positions': typeof AuthenticatedJobPositionsRoute
   '/permissions': typeof AuthenticatedPermissionsRoute
+  '/roles': typeof AuthenticatedRolesRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/resumes/preview': typeof AuthenticatedResumesPreviewRoute
   '/resumes/upload': typeof AuthenticatedResumesUploadRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/503': typeof errors503Route
   '/job-positions': typeof AuthenticatedJobPositionsRoute
   '/permissions': typeof AuthenticatedPermissionsRoute
+  '/roles': typeof AuthenticatedRolesRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/resumes/preview': typeof AuthenticatedResumesPreviewRoute
@@ -285,6 +293,7 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503Route
   '/_authenticated/job-positions': typeof AuthenticatedJobPositionsRoute
   '/_authenticated/permissions': typeof AuthenticatedPermissionsRoute
+  '/_authenticated/roles': typeof AuthenticatedRolesRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/resumes/preview': typeof AuthenticatedResumesPreviewRoute
@@ -318,6 +327,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/job-positions'
     | '/permissions'
+    | '/roles'
     | '/errors/$error'
     | '/resumes/preview'
     | '/resumes/upload'
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/job-positions'
     | '/permissions'
+    | '/roles'
     | '/'
     | '/errors/$error'
     | '/resumes/preview'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '/(errors)/503'
     | '/_authenticated/job-positions'
     | '/_authenticated/permissions'
+    | '/_authenticated/roles'
     | '/_authenticated/'
     | '/_authenticated/errors/$error'
     | '/_authenticated/resumes/preview'
@@ -431,6 +443,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/roles': {
+      id: '/_authenticated/roles'
+      path: '/roles'
+      fullPath: '/roles'
+      preLoaderRoute: typeof AuthenticatedRolesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/permissions': {
@@ -659,6 +678,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedJobPositionsRoute: typeof AuthenticatedJobPositionsRoute
   AuthenticatedPermissionsRoute: typeof AuthenticatedPermissionsRoute
+  AuthenticatedRolesRoute: typeof AuthenticatedRolesRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
   AuthenticatedResumesPreviewRoute: typeof AuthenticatedResumesPreviewRoute
@@ -671,6 +691,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedJobPositionsRoute: AuthenticatedJobPositionsRoute,
   AuthenticatedPermissionsRoute: AuthenticatedPermissionsRoute,
+  AuthenticatedRolesRoute: AuthenticatedRolesRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
   AuthenticatedResumesPreviewRoute: AuthenticatedResumesPreviewRoute,

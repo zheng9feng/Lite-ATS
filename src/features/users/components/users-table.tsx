@@ -73,7 +73,7 @@ export function UsersTable({
       // username per-column text filter
       { columnId: 'username', searchKey: 'username', type: 'string' },
       { columnId: 'status', searchKey: 'status', type: 'array' },
-      { columnId: 'role', searchKey: 'role', type: 'array' },
+      { columnId: 'roles', searchKey: 'role', type: 'array' },
     ],
   })
 
@@ -141,7 +141,7 @@ export function UsersTable({
             ],
           },
           {
-            columnId: 'role',
+            columnId: 'roles',
             title: t('usersPage.filters.role'),
             options: (roleOptions ?? roles).map((role) => {
               const roleName = 'name' in role ? role.name : role.value

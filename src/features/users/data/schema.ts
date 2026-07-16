@@ -8,7 +8,11 @@ const userStatusSchema = z.union([
 ])
 export type UserStatus = z.infer<typeof userStatusSchema>
 
-const userRoleSchema = z.string()
+const userRoleSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+export type UserRole = z.infer<typeof userRoleSchema>
 
 const _userSchema = z.object({
   id: z.string(),
@@ -18,8 +22,7 @@ const _userSchema = z.object({
   email: z.string(),
   phoneNumber: z.string(),
   status: userStatusSchema,
-  role: userRoleSchema,
-  roleId: z.string().optional(),
+  roles: z.array(userRoleSchema),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 })

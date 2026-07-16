@@ -34,6 +34,12 @@
   --sidebar-ring: var(--ring);
 }
 
+.access-control-theme {
+  --primary: oklch(0.623 0.214 259.815);
+  --primary-foreground: oklch(0.984 0.003 247.858);
+  --ring: oklch(0.623 0.214 259.815);
+}
+
 .dark {
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);

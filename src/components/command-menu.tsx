@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowRight, ChevronRight, Laptop, Moon, Sun } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useAuthStore } from '@/stores/auth-store'
 import { useSearch } from '@/context/search-provider'
 import { useTheme } from '@/context/theme-provider'
 import {
@@ -13,7 +14,10 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
-import { sidebarData } from './layout/data/sidebar-data'
+import {
+  filterNavGroupsByPermissions,
+  sidebarData,
+} from './layout/data/sidebar-data'
 import { translateSidebarData } from './layout/translate-sidebar-data'
 import { ScrollArea } from './ui/scroll-area'
 
@@ -22,9 +26,14 @@ export function CommandMenu() {
   const navigate = useNavigate()
   const { setTheme } = useTheme()
   const { open, setOpen } = useSearch()
+  const permissions = useAuthStore((state) => state.auth.permissions)
   const navGroups = React.useMemo(
-    () => translateSidebarData(sidebarData.navGroups, t),
-    [t]
+    () =>
+      translateSidebarData(
+        filterNavGroupsByPermissions(sidebarData.navGroups, permissions),
+        t
+      ),
+    [permissions, t]
   )
 
   const runCommand = React.useCallback(

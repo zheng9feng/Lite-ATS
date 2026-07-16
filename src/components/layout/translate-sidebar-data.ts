@@ -7,6 +7,7 @@ import {
 } from './types'
 
 const NAV_TITLE_KEYS: Record<string, string> = {
+  'Access Control': 'navigation.accessControl',
   Account: 'navigation.account',
   Appearance: 'navigation.appearance',
   Auth: 'navigation.auth',
@@ -29,6 +30,7 @@ const NAV_TITLE_KEYS: Record<string, string> = {
   Profile: 'navigation.profile',
   'Resume Preview': 'navigation.resumePreview',
   'Resume Upload': 'navigation.resumeUpload',
+  Roles: 'navigation.roles',
   Settings: 'navigation.settings',
   'Sign In': 'navigation.signIn',
   'Sign In (2 Col)': 'navigation.signInTwoColumn',

@@ -5,15 +5,12 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { PermissionsPage } from './permissions-page'
+import { RolesPage } from './roles-page'
 
-const route = getRouteApi('/_authenticated/permissions')
+const route = getRouteApi('/_authenticated/roles')
 
-export function Permissions() {
-  const data = route.useLoaderData()
-  const { roleId } = route.useSearch()
-  const selectedRoleId =
-    data.roles.find((role) => role.id === roleId)?.id ?? data.roles[0]?.id
+export function Roles() {
+  const roles = route.useLoaderData()
 
   return (
     <>
@@ -25,11 +22,7 @@ export function Permissions() {
       </Header>
 
       <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
-        <PermissionsPage
-          key={selectedRoleId ?? 'empty'}
-          data={data}
-          requestedRoleId={roleId}
-        />
+        <RolesPage roles={roles} />
       </Main>
     </>
   )

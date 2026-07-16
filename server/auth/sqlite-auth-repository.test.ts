@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { migrateResumeDatabase } from '../resumes/sqlite-resume-migrations'
 import { createSqliteAuthRepository } from './sqlite-auth-repository'
 
@@ -13,6 +13,7 @@ describe('createSqliteAuthRepository', () => {
   })
 
   afterEach(async () => {
+    vi.useRealTimers()
     await rm(tempDir, { force: true, recursive: true })
   })
 
@@ -56,6 +57,8 @@ describe('createSqliteAuthRepository', () => {
     await migrateResumeDatabase({ databasePath })
 
     const repository = createSqliteAuthRepository({ databasePath })
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-17T01:00:00.000Z'))
     const reviewerRole = repository.createRole({
       description: 'Reviews resumes.',
       name: 'reviewer',
@@ -81,9 +84,11 @@ describe('createSqliteAuthRepository', () => {
     repository.setUserRoles(user.id, [reviewerRole.id])
 
     expect(repository.findRoleByName('reviewer')).toMatchObject({
+      createdAt: '2026-07-17T01:00:00.000Z',
       description: 'Reviews resumes.',
       isSystem: false,
       name: 'reviewer',
+      updatedAt: '2026-07-17T01:00:00.000Z',
     })
     expect(repository.listRolePermissions('reviewer')).toEqual([
       'resumes:read',
@@ -91,14 +96,16 @@ describe('createSqliteAuthRepository', () => {
     ])
     expect(repository.countRoleUsers(reviewerRole.id)).toBe(1)
 
-    repository.updateRole(reviewerRole.id, {
+    vi.setSystemTime(new Date('2026-07-17T02:00:00.000Z'))
+    const updatedRole = repository.updateRole(reviewerRole.id, {
       description: 'Screens shared resumes.',
       name: 'resume-reviewer',
     })
 
-    expect(repository.findRoleById(reviewerRole.id)).toMatchObject({
+    expect(updatedRole).toMatchObject({
       description: 'Screens shared resumes.',
       name: 'resume-reviewer',
+      updatedAt: '2026-07-17T02:00:00.000Z',
     })
 
     repository.deleteUser(user.id)

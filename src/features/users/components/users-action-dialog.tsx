@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { type TFunction } from 'i18next'
+import { ChevronsUpDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,6 +17,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   Form,
   FormControl,
   FormField,
@@ -25,7 +33,6 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
-import { SelectDropdown } from '@/components/select-dropdown'
 import { type User } from '../data/schema'
 import {
   createUser,
@@ -45,7 +52,9 @@ function createFormSchema(t: TFunction) {
             : t('usersPage.dialog.validation.emailInvalid'),
       }),
       password: z.string().transform((password) => password.trim()),
-      roleId: z.string().min(1, t('usersPage.dialog.validation.role')),
+      roleIds: z
+        .array(z.string())
+        .min(1, t('usersPage.dialog.validation.role')),
       confirmPassword: z.string().transform((password) => password.trim()),
       isEdit: z.boolean(),
     })
@@ -163,13 +172,13 @@ export function UsersActionDialog({
           email: currentRow.email,
           isEdit,
           password: '',
-          roleId: currentRow.roleId ?? currentRow.role,
+          roleIds: currentRow.roles.map((role) => role.id),
           username: currentRow.username,
         }
       : {
           username: '',
           email: '',
-          roleId: '',
+          roleIds: [],
           password: '',
           confirmPassword: '',
           isEdit,
@@ -202,56 +211,16 @@ export function UsersActionDialog({
     }
   }, [open, t])
 
-  useEffect(() => {
-    if (!currentRow || currentRow.roleId || roleOptions.length === 0) return
-
-    const role = roleOptions.find((option) => option.name === currentRow.role)
-
-    if (role) {
-      form.setValue('roleId', role.id)
-    }
-  }, [currentRow, form, roleOptions])
-
-  const selectRoleOptions = useMemo(() => {
-    const options = [...roleOptions]
-    const currentRoleId = currentRow?.roleId ?? currentRow?.role
-    const currentRoleOption = currentRow?.roleId
-      ? options.find((role) => role.id === currentRow.roleId)
-      : options.find((role) => role.name === currentRow?.role)
-
-    if (
-      currentRow &&
-      currentRoleId &&
-      !currentRoleOption &&
-      !options.some((role) => role.id === currentRoleId)
-    ) {
-      options.push({
-        description: '',
-        id: currentRoleId,
-        name: currentRow.role,
-      })
-    }
-
-    return options.map((role) => ({
-      label: localizedRoleLabel(role.name, t),
-      value: role.id,
-    }))
-  }, [currentRow, roleOptions, t])
-
   const onSubmit = async (values: UserForm) => {
     setError(null)
     setIsSaving(true)
 
     try {
-      const roleId =
-        roleOptions.find((role) => role.id === values.roleId)?.id ??
-        roleOptions.find((role) => role.name === values.roleId)?.id ??
-        values.roleId
       const payload = {
         email: values.email,
         name: values.username,
         password: values.password || undefined,
-        roleId,
+        roleIds: values.roleIds,
         status: toWritableStatus(currentRow?.status),
       }
 
@@ -275,7 +244,7 @@ export function UsersActionDialog({
     }
   }
 
-  const isPasswordTouched = !!form.formState.dirtyFields.password
+  const password = useWatch({ control: form.control, name: 'password' })
 
   return (
     <Dialog
@@ -351,19 +320,68 @@ export function UsersActionDialog({
               />
               <FormField
                 control={form.control}
-                name='roleId'
+                name='roleIds'
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-end'>
                       {t('usersPage.dialog.fields.role')}
                     </FormLabel>
-                    <SelectDropdown
-                      defaultValue={field.value}
-                      onValueChange={field.onChange}
-                      placeholder={t('usersPage.dialog.placeholders.role')}
-                      className='col-span-4'
-                      items={selectRoleOptions}
-                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          aria-label={t('usersPage.dialog.fields.role')}
+                          className='col-span-4 justify-between font-normal'
+                          role='combobox'
+                        >
+                          <span className='truncate'>
+                            {field.value.length
+                              ? roleOptions
+                                  .filter((role) =>
+                                    field.value.includes(role.id)
+                                  )
+                                  .map((role) =>
+                                    localizedRoleLabel(role.name, t)
+                                  )
+                                  .join(', ')
+                              : t('usersPage.dialog.placeholders.role')}
+                          </span>
+                          <ChevronsUpDown data-icon='inline-end' />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align='start'
+                        className='w-(--radix-dropdown-menu-trigger-width)'
+                      >
+                        <DropdownMenuGroup>
+                          {roleOptions.map((role) => (
+                            <DropdownMenuCheckboxItem
+                              key={role.id}
+                              checked={field.value.includes(role.id)}
+                              onCheckedChange={(checked) => {
+                                field.onChange(
+                                  checked
+                                    ? [...field.value, role.id]
+                                    : field.value.filter(
+                                        (roleId) => roleId !== role.id
+                                      )
+                                )
+                              }}
+                            >
+                              <span className='flex flex-col'>
+                                <span>{localizedRoleLabel(role.name, t)}</span>
+                                {role.description ? (
+                                  <span className='text-xs text-muted-foreground'>
+                                    {role.description}
+                                  </span>
+                                ) : null}
+                              </span>
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <FormMessage className='col-span-4 col-start-3' />
                   </FormItem>
                 )}
@@ -401,7 +419,7 @@ export function UsersActionDialog({
                     </FormLabel>
                     <FormControl>
                       <PasswordInput
-                        disabled={!isPasswordTouched}
+                        disabled={!password}
                         hidePasswordLabel={t('usersPage.dialog.hidePassword')}
                         placeholder={t(
                           'usersPage.dialog.placeholders.password'

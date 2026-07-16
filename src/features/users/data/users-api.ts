@@ -31,7 +31,7 @@ type SaveUserPayload = {
   email: string
   name: string
   password?: string
-  roleId: string
+  roleIds: string[]
   status: DatabaseUserStatus
 }
 
@@ -87,11 +87,11 @@ function splitName(name: string) {
 function toTableUser(user: DatabaseUser): User {
   const { firstName, lastName } = splitName(user.name)
   const [username] = user.email.split('@')
-  const firstRole = user.roles[0]
-  const role =
-    typeof firstRole === 'string' ? firstRole : (firstRole?.name ?? 'normal')
-  const roleId =
-    typeof firstRole === 'string' ? firstRole : (firstRole?.id ?? role)
+  const roles = user.roles.map((role) =>
+    typeof role === 'string'
+      ? { id: role, name: role }
+      : { id: role.id ?? role.name, name: role.name }
+  )
 
   return {
     createdAt: new Date(user.createdAt),
@@ -100,8 +100,7 @@ function toTableUser(user: DatabaseUser): User {
     id: user.id,
     lastName,
     phoneNumber: '',
-    role,
-    roleId,
+    roles,
     status: user.status,
     updatedAt: new Date(user.updatedAt),
     username: username || user.id,
@@ -138,7 +137,7 @@ export async function createUser(payload: SaveUserPayload): Promise<User> {
       email: payload.email,
       name: payload.name,
       password: payload.password,
-      roleIds: [payload.roleId],
+      roleIds: payload.roleIds,
       status: payload.status,
     }),
     headers: jsonAuthHeaders(),
@@ -166,7 +165,7 @@ export async function updateUser(
 
   const rolesResponse = await fetch(apiUrl(`/api/users/${userId}/roles`), {
     body: JSON.stringify({
-      roleIds: [payload.roleId],
+      roleIds: payload.roleIds,
     }),
     headers: jsonAuthHeaders(),
     method: 'PUT',
@@ -178,7 +177,10 @@ export async function updateUser(
 
   return {
     ...user,
-    roleId: payload.roleId,
+    roles: payload.roleIds.map((roleId) => ({
+      id: roleId,
+      name: user.roles.find((role) => role.id === roleId)?.name ?? roleId,
+    })),
   }
 }
 

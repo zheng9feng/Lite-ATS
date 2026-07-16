@@ -246,6 +246,10 @@ export function createAuthService({
   }
 
   async function createUser(payload: CreateLocalUserPayload) {
+    if (!payload.roleIds?.length && !payload.roles?.length) {
+      throw new Error('Every user must have at least one role.')
+    }
+
     const user = repository.createUser({
       email: payload.email,
       name: payload.name,
@@ -349,6 +353,11 @@ export function createAuthService({
     setUserRoles: (userId: string, roleIds: string[]) => {
       resolveRolesById(roleIds)
       assertActiveRbacUserRemains(userId, roleIds)
+
+      if (roleIds.length === 0) {
+        throw new Error('Every user must have at least one role.')
+      }
+
       repository.setUserRoles(userId, roleIds)
     },
     setRolePermissions: (roleId: string, permissionNames: Permission[]) => {

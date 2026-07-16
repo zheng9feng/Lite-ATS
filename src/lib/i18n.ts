@@ -108,6 +108,7 @@ export const resources = {
         },
       },
       navigation: {
+        accessControl: '访问控制',
         addTeam: '添加团队',
         auth: '认证',
         appearance: '外观',
@@ -139,6 +140,7 @@ export const resources = {
         reports: '报表',
         resumePreview: '简历预览',
         resumeUpload: '简历上传',
+        roles: '角色',
         settings: '设置',
         signIn: '登录',
         signInTwoColumn: '双栏登录',
@@ -175,7 +177,7 @@ export const resources = {
           confirm: '删除',
           deleting: '正在删除...',
           description:
-            '确定要删除用户 {{username}} 吗？此操作将永久移除该用户及其 {{role}} 角色，且无法撤销。',
+            '确定要删除用户 {{username}} 吗？此操作将永久移除该用户及其角色（{{roles}}），且无法撤销。',
           errors: {
             delete: '无法删除用户。',
           },
@@ -206,7 +208,7 @@ export const resources = {
           placeholders: {
             email: 'user@example.com',
             password: '例如：S3cur3P@ssw0rd',
-            role: '选择角色',
+            role: '选择一个或多个角色',
             username: 'zhang_san',
           },
           saving: '正在保存...',
@@ -220,7 +222,7 @@ export const resources = {
             passwordMismatch: '两次输入的密码不一致。',
             passwordNumber: '密码必须包含至少一个数字。',
             passwordRequired: '请输入密码。',
-            role: '请选择角色。',
+            role: '请至少选择一个角色。',
             username: '请输入用户名。',
           },
         },
@@ -252,26 +254,100 @@ export const resources = {
         },
         title: '用户列表',
       },
+      rolesPage: {
+        actions: {
+          cancel: '取消',
+          close: '关闭',
+          configure: '配置权限',
+          create: '新建角色',
+          delete: '删除',
+          edit: '编辑',
+          openMenu: '打开 {{role}} 的角色操作菜单',
+          save: '保存',
+          saving: '正在保存...',
+        },
+        api: {
+          failed: '角色请求失败。',
+        },
+        columns: {
+          actions: '操作',
+          description: '描述',
+          role: '角色',
+          type: '类型',
+          updatedAt: '更新时间',
+          users: '用户数',
+        },
+        constraints: {
+          assigned: '已分配用户的角色不可删除。',
+          summary: '系统角色不可删除或重命名；已分配用户的角色不可删除。',
+          system: '系统角色不可删除。',
+        },
+        count: '共 {{count}} 个角色',
+        delete: {
+          description: '确定要删除角色 {{role}} 吗？此操作无法撤销。',
+          title: '删除角色',
+        },
+        description: '创建并维护团队角色。',
+        empty: '没有找到匹配的角色。',
+        feedback: {
+          created: '角色已创建。',
+          deleted: '角色已删除。',
+          updated: '角色已更新。',
+        },
+        form: {
+          createDescription: '创建角色后，可在权限配置页分配访问权限。',
+          createTitle: '新建角色',
+          description: '描述',
+          editDescription: '更新角色名称和职责描述。',
+          editTitle: '编辑角色',
+          name: '角色名称',
+          systemNameHelp: '系统角色名称不可修改。',
+        },
+        search: '搜索角色',
+        title: '角色管理',
+        types: {
+          custom: '自定义角色',
+          system: '系统角色',
+        },
+      },
       permissionsPage: {
         actions: {
-          create: '创建角色',
-          delete: '删除',
-          save: '保存',
+          collapseAll: '全部收起',
+          discard: '放弃更改',
+          expandAll: '全部展开',
+          save: '保存更改',
+          saving: '正在保存...',
+          toggleAll: '展开或收起全部权限',
+          toggleResource: '展开或收起{{resource}}权限',
         },
         api: {
           failed: '权限请求失败。',
         },
-        createRole: {
-          description: '创建自定义角色后再分配权限。',
-          title: '新建角色',
+        description: '按角色分配系统访问权限。',
+        empty: {
+          action: '新建角色',
+          description: '创建角色后即可分配权限。',
+          title: '尚无可配置的角色',
         },
-        description: '配置角色权限并管理用户角色资源。',
-        fields: {
-          description: '描述',
-          roleName: '角色名称',
+        emptySearch: '没有找到匹配的权限。',
+        feedback: {
+          saved: '权限配置已保存。',
         },
-        roleEditor: {
-          description: '为选中的角色配置权限。',
+        permissionLabels: {
+          'job-positions': {
+            manage: '管理职位',
+            read: '查看职位',
+          },
+          pages: { view: '查看示例页面' },
+          rbac: { manage: '管理角色与权限' },
+          resumes: {
+            create: '上传简历',
+            delete: '删除简历',
+            read: '查看简历',
+            share: '分享简历',
+            update: '编辑简历',
+          },
+          users: { manage: '管理用户' },
         },
         permissionDescriptions: {
           'job-positions': {
@@ -311,20 +387,30 @@ export const resources = {
             description: '拥有简历只读访问权限。',
           },
         },
-        systemRole: '系统角色',
-        tabs: {
-          roles: '角色配置',
-          users: '用户角色',
+        role: {
+          customMeta: '自定义角色 · {{count}} 个用户',
+          label: '角色',
+          systemMeta: '系统角色 · {{count}} 个用户',
         },
-        title: '权限管理',
-        userCount: '{{count}} 个用户',
-        userRoles: {
-          assignedRoles: '已分配角色',
-          effectivePermissions: '有效权限',
+        search: '搜索权限',
+        summary: {
+          byResource: '按资源分组统计',
+          impact: '保存后立即影响该角色的所有用户。',
+          permissions: '项权限',
+          selected: '已选择',
+          title: '已选权限',
+          unsaved: '未保存更改',
         },
-        userStatus: {
-          active: '已启用',
-          inactive: '未启用',
+        title: '权限配置',
+        tree: {
+          adminLock: '管理员必须保留此权限',
+          all: '全部权限',
+        },
+        unsaved: {
+          description: '离开后，当前未保存的权限更改将丢失。',
+          leave: '放弃并离开',
+          stay: '继续编辑',
+          title: '放弃未保存的更改？',
         },
       },
       jobPositionsPage: {
@@ -761,6 +847,7 @@ export const resources = {
         },
       },
       navigation: {
+        accessControl: 'Access Control',
         addTeam: 'Add team',
         auth: 'Auth',
         appearance: 'Appearance',
@@ -792,6 +879,7 @@ export const resources = {
         reports: 'Reports',
         resumePreview: 'Resume Preview',
         resumeUpload: 'Resume Upload',
+        roles: 'Roles',
         settings: 'Settings',
         signIn: 'Sign In',
         signInTwoColumn: 'Sign In (2 Col)',
@@ -828,7 +916,7 @@ export const resources = {
           confirm: 'Delete',
           deleting: 'Deleting...',
           description:
-            'Are you sure you want to delete {{username}}? This action will permanently remove the user with the {{role}} role and cannot be undone.',
+            'Are you sure you want to delete {{username}}? This permanently removes the user and their roles ({{roles}}), and cannot be undone.',
           errors: {
             delete: 'Failed to delete user.',
           },
@@ -860,7 +948,7 @@ export const resources = {
           placeholders: {
             email: 'john.doe@gmail.com',
             password: 'e.g., S3cur3P@ssw0rd',
-            role: 'Select a role',
+            role: 'Select one or more roles',
             username: 'john_doe',
           },
           saving: 'Saving...',
@@ -875,7 +963,7 @@ export const resources = {
             passwordMismatch: "Passwords don't match.",
             passwordNumber: 'Password must contain at least one number.',
             passwordRequired: 'Password is required.',
-            role: 'Role is required.',
+            role: 'Select at least one role.',
             username: 'Username is required.',
           },
         },
@@ -907,27 +995,93 @@ export const resources = {
         },
         title: 'User List',
       },
+      rolesPage: {
+        actions: {
+          cancel: 'Cancel',
+          close: 'Close',
+          configure: 'Configure permissions',
+          create: 'New role',
+          delete: 'Delete',
+          edit: 'Edit',
+          openMenu: 'Open actions for {{role}}',
+          save: 'Save',
+          saving: 'Saving...',
+        },
+        api: { failed: 'Role request failed.' },
+        columns: {
+          actions: 'Actions',
+          description: 'Description',
+          role: 'Role',
+          type: 'Type',
+          updatedAt: 'Updated',
+          users: 'Users',
+        },
+        constraints: {
+          assigned: 'Roles assigned to users cannot be deleted.',
+          summary:
+            'System roles cannot be deleted or renamed; assigned roles cannot be deleted.',
+          system: 'System roles cannot be deleted.',
+        },
+        count: '{{count}} roles',
+        delete: {
+          description: 'Delete the {{role}} role? This cannot be undone.',
+          title: 'Delete role',
+        },
+        description: 'Create and maintain team roles.',
+        empty: 'No matching roles found.',
+        feedback: {
+          created: 'Role created.',
+          deleted: 'Role deleted.',
+          updated: 'Role updated.',
+        },
+        form: {
+          createDescription:
+            'After creating the role, assign access on the Permissions page.',
+          createTitle: 'New role',
+          description: 'Description',
+          editDescription: 'Update the role name and responsibility summary.',
+          editTitle: 'Edit role',
+          name: 'Role name',
+          systemNameHelp: 'System role names cannot be changed.',
+        },
+        search: 'Search roles',
+        title: 'Role Management',
+        types: { custom: 'Custom role', system: 'System role' },
+      },
       permissionsPage: {
         actions: {
-          create: 'Create Role',
-          delete: 'Delete',
-          save: 'Save',
+          collapseAll: 'Collapse all',
+          discard: 'Discard changes',
+          expandAll: 'Expand all',
+          save: 'Save changes',
+          saving: 'Saving...',
+          toggleAll: 'Expand or collapse all permissions',
+          toggleResource: 'Expand or collapse {{resource}} permissions',
         },
-        api: {
-          failed: 'Permission request failed.',
+        api: { failed: 'Permission request failed.' },
+        description: 'Assign system access by role.',
+        empty: {
+          action: 'Create role',
+          description: 'Create a role before assigning permissions.',
+          title: 'No roles to configure',
         },
-        createRole: {
-          description: 'Create a custom role before assigning permissions.',
-          title: 'New Role',
-        },
-        description:
-          'Configure role permissions and manage user role resources.',
-        fields: {
-          description: 'Description',
-          roleName: 'Role Name',
-        },
-        roleEditor: {
-          description: 'Configure permissions for the selected role.',
+        emptySearch: 'No matching permissions found.',
+        feedback: { saved: 'Permission configuration saved.' },
+        permissionLabels: {
+          'job-positions': {
+            manage: 'Manage positions',
+            read: 'View positions',
+          },
+          pages: { view: 'View example pages' },
+          rbac: { manage: 'Manage roles and permissions' },
+          resumes: {
+            create: 'Upload resumes',
+            delete: 'Delete resumes',
+            read: 'View resumes',
+            share: 'Share resumes',
+            update: 'Edit resumes',
+          },
+          users: { manage: 'Manage users' },
         },
         permissionDescriptions: {
           'job-positions': {
@@ -967,20 +1121,31 @@ export const resources = {
             description: 'Read-only access to resumes.',
           },
         },
-        systemRole: 'System Role',
-        tabs: {
-          roles: 'Role Configuration',
-          users: 'User Roles',
+        role: {
+          customMeta: 'Custom role · {{count}} users',
+          label: 'Role',
+          systemMeta: 'System role · {{count}} users',
         },
-        title: 'Permissions Management',
-        userCount: '{{count}} users',
-        userRoles: {
-          assignedRoles: 'Assigned Roles',
-          effectivePermissions: 'Effective Permissions',
+        search: 'Search permissions',
+        summary: {
+          byResource: 'Grouped by resource',
+          impact: 'Saving immediately affects every user with this role.',
+          permissions: 'permissions',
+          selected: 'Selected',
+          title: 'Selected permissions',
+          unsaved: 'Unsaved changes',
         },
-        userStatus: {
-          active: 'Active',
-          inactive: 'Inactive',
+        title: 'Permission Configuration',
+        tree: {
+          adminLock: 'Administrators must keep this permission',
+          all: 'All permissions',
+        },
+        unsaved: {
+          description:
+            'Your unsaved permission changes will be lost if you leave.',
+          leave: 'Discard and leave',
+          stay: 'Keep editing',
+          title: 'Discard unsaved changes?',
         },
       },
       jobPositionsPage: {

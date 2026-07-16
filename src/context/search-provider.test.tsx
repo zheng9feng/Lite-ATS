@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, type RenderResult } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
+import { useAuthStore } from '@/stores/auth-store'
 import { LanguageProvider } from '@/context/language-provider'
 import { SearchProvider } from '@/context/search-provider'
 
@@ -63,6 +64,20 @@ async function openCommandPalette(
 describe('SearchProvider and CommandMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useAuthStore.getState().auth.reset()
+    useAuthStore.getState().auth.setAuthSnapshot({
+      permissions: ['users:manage', 'rbac:manage'],
+      roles: ['admin'],
+      sessionToken: 'session-token',
+      user: {
+        createdAt: '2026-07-17T00:00:00.000Z',
+        email: 'admin@example.com',
+        id: 'user-admin',
+        name: 'Admin',
+        status: 'active',
+        updatedAt: '2026-07-17T00:00:00.000Z',
+      },
+    })
   })
 
   it('renders the command palette when the palette is open', async () => {
@@ -135,6 +150,32 @@ describe('SearchProvider and CommandMenu', () => {
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/settings/account' })
     await expect
       .element(getByPlaceholder(COMMAND_MENU_PLACEHOLDER))
+      .not.toBeInTheDocument()
+  })
+
+  it('hides protected access-control commands without RBAC access', async () => {
+    useAuthStore.getState().auth.setAuthSnapshot({
+      permissions: ['resumes:read'],
+      roles: ['normal'],
+      sessionToken: 'session-token',
+      user: {
+        createdAt: '2026-07-17T00:00:00.000Z',
+        email: 'viewer@example.com',
+        id: 'user-viewer',
+        name: 'Viewer',
+        status: 'active',
+        updatedAt: '2026-07-17T00:00:00.000Z',
+      },
+    })
+    const screen = await renderWithSearchProvider()
+
+    await openCommandPalette(screen)
+
+    await expect
+      .element(screen.getByRole('option', { name: '访问控制 角色' }))
+      .not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('option', { name: '访问控制 权限' }))
       .not.toBeInTheDocument()
   })
 
