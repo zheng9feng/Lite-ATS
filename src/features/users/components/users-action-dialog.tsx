@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { type TFunction } from 'i18next'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -32,71 +34,74 @@ import {
   type UserRoleOption,
 } from '../data/users-api'
 
-const formSchema = z
-  .object({
-    firstName: z.string().min(1, 'First Name is required.'),
-    lastName: z.string().min(1, 'Last Name is required.'),
-    username: z.string().min(1, 'Username is required.'),
-    phoneNumber: z.string().min(1, 'Phone number is required.'),
-    email: z.email({
-      error: (iss) => (iss.input === '' ? 'Email is required.' : undefined),
-    }),
-    password: z.string().transform((pwd) => pwd.trim()),
-    roleId: z.string().min(1, 'Role is required.'),
-    confirmPassword: z.string().transform((pwd) => pwd.trim()),
-    isEdit: z.boolean(),
-  })
-  .refine(
-    (data) => {
-      if (data.isEdit && !data.password) return true
-      return data.password.length > 0
-    },
-    {
-      message: 'Password is required.',
-      path: ['password'],
-    }
-  )
-  .refine(
-    ({ isEdit, password }) => {
-      if (isEdit && !password) return true
-      return password.length >= 8
-    },
-    {
-      message: 'Password must be at least 8 characters long.',
-      path: ['password'],
-    }
-  )
-  .refine(
-    ({ isEdit, password }) => {
-      if (isEdit && !password) return true
-      return /[a-z]/.test(password)
-    },
-    {
-      message: 'Password must contain at least one lowercase letter.',
-      path: ['password'],
-    }
-  )
-  .refine(
-    ({ isEdit, password }) => {
-      if (isEdit && !password) return true
-      return /\d/.test(password)
-    },
-    {
-      message: 'Password must contain at least one number.',
-      path: ['password'],
-    }
-  )
-  .refine(
-    ({ isEdit, password, confirmPassword }) => {
-      if (isEdit && !password) return true
-      return password === confirmPassword
-    },
-    {
-      message: "Passwords don't match.",
-      path: ['confirmPassword'],
-    }
-  )
-type UserForm = z.infer<typeof formSchema>
+function createFormSchema(t: TFunction) {
+  return z
+    .object({
+      username: z.string().min(1, t('usersPage.dialog.validation.username')),
+      email: z.email({
+        error: (issue) =>
+          issue.input === ''
+            ? t('usersPage.dialog.validation.emailRequired')
+            : t('usersPage.dialog.validation.emailInvalid'),
+      }),
+      password: z.string().transform((password) => password.trim()),
+      roleId: z.string().min(1, t('usersPage.dialog.validation.role')),
+      confirmPassword: z.string().transform((password) => password.trim()),
+      isEdit: z.boolean(),
+    })
+    .refine(
+      (data) => {
+        if (data.isEdit && !data.password) return true
+        return data.password.length > 0
+      },
+      {
+        message: t('usersPage.dialog.validation.passwordRequired'),
+        path: ['password'],
+      }
+    )
+    .refine(
+      ({ isEdit, password }) => {
+        if (isEdit && !password) return true
+        return password.length >= 8
+      },
+      {
+        message: t('usersPage.dialog.validation.passwordLength'),
+        path: ['password'],
+      }
+    )
+    .refine(
+      ({ isEdit, password }) => {
+        if (isEdit && !password) return true
+        return /[a-z]/.test(password)
+      },
+      {
+        message: t('usersPage.dialog.validation.passwordLowercase'),
+        path: ['password'],
+      }
+    )
+    .refine(
+      ({ isEdit, password }) => {
+        if (isEdit && !password) return true
+        return /\d/.test(password)
+      },
+      {
+        message: t('usersPage.dialog.validation.passwordNumber'),
+        path: ['password'],
+      }
+    )
+    .refine(
+      ({ isEdit, password, confirmPassword }) => {
+        if (isEdit && !password) return true
+        return password === confirmPassword
+      },
+      {
+        message: t('usersPage.dialog.validation.passwordMismatch'),
+        path: ['confirmPassword'],
+      }
+    )
+}
+
+type UserForm = z.infer<ReturnType<typeof createFormSchema>>
 
 type UserActionDialogProps = {
   currentRow?: User
@@ -113,6 +118,25 @@ function roleLabel(roleName: string) {
     .join(' ')
 }
 
+function localizedRoleLabel(roleName: string, t: TFunction) {
+  switch (roleName.toLowerCase()) {
+    case 'admin':
+      return t('usersPage.roles.admin')
+    case 'cashier':
+      return t('usersPage.roles.cashier')
+    case 'manager':
+      return t('usersPage.roles.manager')
+    case 'normal':
+      return t('usersPage.roles.normal')
+    case 'reviewer':
+      return t('usersPage.roles.reviewer')
+    case 'superadmin':
+      return t('usersPage.roles.superadmin')
+    default:
+      return roleLabel(roleName)
+  }
+}
+
 function toWritableStatus(
   status: User['status'] | undefined
 ): 'active' | 'inactive' {
@@ -125,27 +149,27 @@ export function UsersActionDialog({
   open,
   onOpenChange,
 }: UserActionDialogProps) {
+  const { t } = useTranslation()
   const isEdit = !!currentRow
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [roleOptions, setRoleOptions] = useState<UserRoleOption[]>([])
+  const formSchema = useMemo(() => createFormSchema(t), [t])
   const form = useForm<UserForm>({
     resolver: zodResolver(formSchema),
     defaultValues: isEdit
       ? {
-          ...currentRow,
-          password: '',
           confirmPassword: '',
-          roleId: currentRow.roleId ?? currentRow.role,
+          email: currentRow.email,
           isEdit,
+          password: '',
+          roleId: currentRow.roleId ?? currentRow.role,
+          username: currentRow.username,
         }
       : {
-          firstName: '',
-          lastName: '',
           username: '',
           email: '',
           roleId: '',
-          phoneNumber: '',
           password: '',
           confirmPassword: '',
           isEdit,
@@ -168,7 +192,7 @@ export function UsersActionDialog({
           setError(
             reason instanceof Error
               ? reason.message
-              : 'Failed to load role options.'
+              : t('usersPage.dialog.errors.loadRoles')
           )
         }
       })
@@ -176,7 +200,7 @@ export function UsersActionDialog({
     return () => {
       isCurrent = false
     }
-  }, [open])
+  }, [open, t])
 
   useEffect(() => {
     if (!currentRow || currentRow.roleId || roleOptions.length === 0) return
@@ -209,10 +233,10 @@ export function UsersActionDialog({
     }
 
     return options.map((role) => ({
-      label: roleLabel(role.name),
+      label: localizedRoleLabel(role.name, t),
       value: role.id,
     }))
-  }, [currentRow, roleOptions])
+  }, [currentRow, roleOptions, t])
 
   const onSubmit = async (values: UserForm) => {
     setError(null)
@@ -225,7 +249,7 @@ export function UsersActionDialog({
         values.roleId
       const payload = {
         email: values.email,
-        name: `${values.firstName} ${values.lastName}`.trim(),
+        name: values.username,
         password: values.password || undefined,
         roleId,
         status: toWritableStatus(currentRow?.status),
@@ -242,7 +266,9 @@ export function UsersActionDialog({
       onOpenChange(false)
     } catch (reason) {
       setError(
-        reason instanceof Error ? reason.message : 'Failed to save user.'
+        reason instanceof Error
+          ? reason.message
+          : t('usersPage.dialog.errors.save')
       )
     } finally {
       setIsSaving(false)
@@ -260,12 +286,20 @@ export function UsersActionDialog({
         onOpenChange(state)
       }}
     >
-      <DialogContent className='sm:max-w-lg'>
+      <DialogContent
+        className='sm:max-w-lg'
+        closeLabel={t('usersPage.dialog.close')}
+      >
         <DialogHeader className='text-start'>
-          <DialogTitle>{isEdit ? 'Edit User' : 'Add New User'}</DialogTitle>
+          <DialogTitle>
+            {isEdit
+              ? t('usersPage.dialog.editTitle')
+              : t('usersPage.dialog.addTitle')}
+          </DialogTitle>
           <DialogDescription>
-            {isEdit ? 'Update the user here. ' : 'Create new user here. '}
-            Click save when you&apos;re done.
+            {isEdit
+              ? t('usersPage.dialog.editDescription')
+              : t('usersPage.dialog.addDescription')}
           </DialogDescription>
         </DialogHeader>
         <div className='h-105 w-[calc(100%+0.75rem)] overflow-y-auto py-1 pe-3'>
@@ -277,55 +311,17 @@ export function UsersActionDialog({
             >
               <FormField
                 control={form.control}
-                name='firstName'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-end'>
-                      First Name
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder='John'
-                        className='col-span-4'
-                        autoComplete='off'
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name='lastName'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-end'>
-                      Last Name
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder='Doe'
-                        className='col-span-4'
-                        autoComplete='off'
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name='username'
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-end'>
-                      Username
+                      {t('usersPage.dialog.fields.username')}
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder='john_doe'
+                        placeholder={t(
+                          'usersPage.dialog.placeholders.username'
+                        )}
                         className='col-span-4'
                         {...field}
                       />
@@ -339,29 +335,12 @@ export function UsersActionDialog({
                 name='email'
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-end'>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder='john.doe@gmail.com'
-                        className='col-span-4'
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name='phoneNumber'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-end'>
-                      Phone Number
+                      {t('usersPage.dialog.fields.email')}
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder='+123456789'
+                        placeholder={t('usersPage.dialog.placeholders.email')}
                         className='col-span-4'
                         {...field}
                       />
@@ -375,11 +354,13 @@ export function UsersActionDialog({
                 name='roleId'
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-end'>Role</FormLabel>
+                    <FormLabel className='col-span-2 text-end'>
+                      {t('usersPage.dialog.fields.role')}
+                    </FormLabel>
                     <SelectDropdown
                       defaultValue={field.value}
                       onValueChange={field.onChange}
-                      placeholder='Select a role'
+                      placeholder={t('usersPage.dialog.placeholders.role')}
                       className='col-span-4'
                       items={selectRoleOptions}
                     />
@@ -393,11 +374,15 @@ export function UsersActionDialog({
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-end'>
-                      Password
+                      {t('usersPage.dialog.fields.password')}
                     </FormLabel>
                     <FormControl>
                       <PasswordInput
-                        placeholder='e.g., S3cur3P@ssw0rd'
+                        hidePasswordLabel={t('usersPage.dialog.hidePassword')}
+                        placeholder={t(
+                          'usersPage.dialog.placeholders.password'
+                        )}
+                        showPasswordLabel={t('usersPage.dialog.showPassword')}
                         className='col-span-4'
                         {...field}
                       />
@@ -412,12 +397,16 @@ export function UsersActionDialog({
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-end'>
-                      Confirm Password
+                      {t('usersPage.dialog.fields.confirmPassword')}
                     </FormLabel>
                     <FormControl>
                       <PasswordInput
                         disabled={!isPasswordTouched}
-                        placeholder='e.g., S3cur3P@ssw0rd'
+                        hidePasswordLabel={t('usersPage.dialog.hidePassword')}
+                        placeholder={t(
+                          'usersPage.dialog.placeholders.password'
+                        )}
+                        showPasswordLabel={t('usersPage.dialog.showPassword')}
                         className='col-span-4'
                         {...field}
                       />
@@ -436,7 +425,9 @@ export function UsersActionDialog({
         </div>
         <DialogFooter>
           <Button type='submit' form='user-form' disabled={isSaving}>
-            Save changes
+            {isSaving
+              ? t('usersPage.dialog.saving')
+              : t('usersPage.dialog.submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

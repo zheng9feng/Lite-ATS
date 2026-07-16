@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, type RenderResult } from 'vitest-browser-react'
 import { type UserEvent, userEvent } from 'vitest/browser'
+import { i18n } from '@/lib/i18n'
 import { type User } from '../data/schema'
 import { UsersActionDialog } from './users-action-dialog'
 
@@ -9,10 +10,7 @@ const listUserRoleOptions = vi.hoisted(() => vi.fn())
 const updateUser = vi.hoisted(() => vi.fn())
 
 const VALIDATION_MESSAGES = {
-  firstName: 'First Name is required.',
-  lastName: 'Last Name is required.',
   username: 'Username is required.',
-  phoneNumber: 'Phone number is required.',
   email: 'Email is required.',
   role: 'Role is required.',
   password: 'Password is required.',
@@ -43,8 +41,9 @@ vi.mock('../data/users-api', () => ({
 }))
 
 describe('UsersActionDialog', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    await i18n.changeLanguage('en')
     createUser.mockResolvedValue({})
     updateUser.mockResolvedValue({})
     listUserRoleOptions.mockResolvedValue([
@@ -54,6 +53,48 @@ describe('UsersActionDialog', () => {
   })
 
   describe('add user', () => {
+    it('renders the complete dialog in Chinese', async () => {
+      await i18n.changeLanguage('zh-CN')
+
+      const { getByLabelText, getByRole, getByText } = await render(
+        <UsersActionDialog open onOpenChange={vi.fn()} />
+      )
+
+      await expect
+        .element(getByRole('heading', { level: 2, name: '添加新用户' }))
+        .toBeInTheDocument()
+      await expect
+        .element(getByText('在此创建新用户，完成后点击保存。'))
+        .toBeInTheDocument()
+      await expect
+        .element(getByLabelText('名', { exact: true }))
+        .not.toBeInTheDocument()
+      await expect
+        .element(getByLabelText('姓', { exact: true }))
+        .not.toBeInTheDocument()
+      await expect
+        .element(getByLabelText('用户名', { exact: true }))
+        .toBeInTheDocument()
+      await expect
+        .element(getByLabelText('邮箱', { exact: true }))
+        .toBeInTheDocument()
+      await expect
+        .element(getByLabelText('电话号码', { exact: true }))
+        .not.toBeInTheDocument()
+      await expect
+        .element(getByLabelText('密码', { exact: true }))
+        .toBeInTheDocument()
+      await expect
+        .element(getByLabelText('确认密码', { exact: true }))
+        .toBeInTheDocument()
+      await expect
+        .element(getByRole('combobox', { name: '角色' }))
+        .toHaveTextContent('选择角色')
+      await expect
+        .element(getByRole('button', { name: '保存更改' }))
+        .toBeInTheDocument()
+    })
+
     it('renders title and description', async () => {
       const { getByRole, getByText } = await render(
         <UsersActionDialog open onOpenChange={vi.fn()} />
@@ -80,16 +121,7 @@ describe('UsersActionDialog', () => {
       await userEvent.click(submitButton)
 
       await expect
-        .element(getByText(VALIDATION_MESSAGES.firstName))
-        .toBeInTheDocument()
-      await expect
-        .element(getByText(VALIDATION_MESSAGES.lastName))
-        .toBeInTheDocument()
-      await expect
         .element(getByText(VALIDATION_MESSAGES.username))
-        .toBeInTheDocument()
-      await expect
-        .element(getByText(VALIDATION_MESSAGES.phoneNumber))
         .toBeInTheDocument()
       await expect
         .element(getByText(VALIDATION_MESSAGES.email))
@@ -200,7 +232,7 @@ describe('UsersActionDialog', () => {
       expect(createUser).toHaveBeenCalledOnce()
       expect(createUser).toHaveBeenCalledWith({
         email: MOCK_USER.email,
-        name: `${MOCK_USER.firstName} ${MOCK_USER.lastName}`,
+        name: MOCK_USER.username,
         password: 'S3cur3P@ssw0rd',
         roleId: 'role-admin',
         status: 'active',
@@ -265,7 +297,7 @@ describe('UsersActionDialog', () => {
       expect(updateUser).toHaveBeenCalledOnce()
       expect(updateUser).toHaveBeenCalledWith(MOCK_USER.id, {
         email: MOCK_USER.email,
-        name: `${MOCK_USER.firstName} ${MOCK_USER.lastName}`,
+        name: MOCK_USER.username,
         roleId: MOCK_USER.roleId,
         status: MOCK_USER.status,
       })
@@ -302,12 +334,12 @@ describe('UsersActionDialog', () => {
         />
       )
 
-      const EDIT_SUCCESS_FIRST_NAME = 'John'
+      const EDIT_SUCCESS_USERNAME = 'john_smith'
       const EDIT_SUCCESS_PASSWORD = 'S3cur3P@ssw0rd'
 
       await userEvent.fill(
-        screen.getByLabelText(/first name/i),
-        EDIT_SUCCESS_FIRST_NAME
+        screen.getByLabelText(/username/i),
+        EDIT_SUCCESS_USERNAME
       )
       await fillPasswords(
         userEvent,
@@ -325,7 +357,7 @@ describe('UsersActionDialog', () => {
       expect(updateUser).toHaveBeenCalledOnce()
       expect(updateUser).toHaveBeenCalledWith(MOCK_USER.id, {
         email: MOCK_USER.email,
-        name: `${EDIT_SUCCESS_FIRST_NAME} ${MOCK_USER.lastName}`,
+        name: EDIT_SUCCESS_USERNAME,
         password: 'S3cur3P@ssw0rd',
         roleId: MOCK_USER.roleId,
         status: MOCK_USER.status,
@@ -338,20 +370,14 @@ async function fillRequiredProfileFields(
   user: UserEvent,
   screen: RenderResult,
   overrides?: {
-    firstName?: string
-    lastName?: string
     username?: string
     email?: string
     roleOption?: string | RegExp
-    phoneNumber?: string
   }
 ) {
   const entries = [
-    [/first name/i, overrides?.firstName ?? 'John'],
-    [/last name/i, overrides?.lastName ?? 'Doe'],
     [/username/i, overrides?.username ?? 'john_doe'],
     [/^email$/i, overrides?.email ?? 'a@b.co'],
-    [/phone number/i, overrides?.phoneNumber ?? '+19999999999'],
   ] as const
 
   for (const [label, value] of entries) {

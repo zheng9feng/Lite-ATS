@@ -7,13 +7,17 @@ type PasswordInputProps = Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
   'type'
 > & {
+  hidePasswordLabel?: string
   ref?: React.Ref<HTMLInputElement>
+  showPasswordLabel?: string
 }
 
 export function PasswordInput({
   className,
   disabled,
+  hidePasswordLabel = 'Hide password',
   ref,
+  showPasswordLabel = 'Show password',
   ...props
 }: PasswordInputProps) {
   const [showPassword, setShowPassword] = React.useState(false)
@@ -37,7 +41,7 @@ export function PasswordInput({
       >
         {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
         <span className='sr-only'>
-          {showPassword ? 'Hide password' : 'Show password'}
+          {showPassword ? hidePasswordLabel : showPasswordLabel}
         </span>
       </Button>
     </div>
