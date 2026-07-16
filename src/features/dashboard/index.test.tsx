@@ -60,7 +60,7 @@ function renderDashboard() {
   )
 }
 
-function setResumeReadAccess(permissions = ['resumes:read']) {
+function setResumeReadAccess(permissions = ['resumes:create', 'resumes:read']) {
   useAuthStore.getState().auth.setAuthSnapshot({
     permissions,
     roles: ['normal'],
@@ -151,6 +151,20 @@ describe('Dashboard resume summary', () => {
     expect(getResumeDashboardSummary).toHaveBeenCalled()
   })
 
+  it('hides every upload action when the user has read-only access', async () => {
+    setResumeReadAccess(['resumes:read'])
+
+    const { getByRole } = await renderDashboard()
+
+    await expect
+      .element(getByRole('link', { name: '上传简历' }))
+      .not.toBeInTheDocument()
+    await expect
+      .element(getByRole('link', { name: '简历上传' }))
+      .not.toBeInTheDocument()
+    expect(getResumeDashboardSummary).toHaveBeenCalled()
+  })
+
   it('renders resume analytics text in Chinese by default', async () => {
     const { getByRole, getByText } = await renderDashboard()
 
@@ -202,6 +216,27 @@ describe('Dashboard resume summary', () => {
     await expect
       .element(getByRole('link', { name: '上传第一份简历' }))
       .toHaveAttribute('href', '/resumes/upload')
+  })
+
+  it('hides the empty-state upload action without create access', async () => {
+    setResumeReadAccess(['resumes:read'])
+    getResumeDashboardSummary.mockResolvedValue({
+      ...createSummary(),
+      latestUploadAt: null,
+      recentResumes: [],
+      topPositions: [],
+      totalFileSize: 0,
+      totalResumes: 0,
+      uniquePositionCount: 0,
+      uploadsByMonth: [],
+    })
+
+    const { getByRole, getByText } = await renderDashboard()
+
+    await expect.element(getByText('暂无简历数据')).toBeInTheDocument()
+    await expect
+      .element(getByRole('link', { name: '上传第一份简历' }))
+      .not.toBeInTheDocument()
   })
 
   it('shows an error state when the summary cannot load', async () => {

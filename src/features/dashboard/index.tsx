@@ -63,6 +63,7 @@ function formatDate(value: string | null, locale: string, fallback: string) {
 export function Dashboard() {
   const { t } = useTranslation()
   const { locale } = useLanguage()
+  const canCreateResumes = useCan(['resumes:create'])
   const canReadResumes = useCan(['resumes:read'])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -81,12 +82,16 @@ export function Dashboard() {
         isActive: false,
         disabled: false,
       },
-      {
-        title: t('navigation.resumeUpload'),
-        href: '/resumes/upload',
-        isActive: false,
-        disabled: false,
-      },
+      ...(canCreateResumes
+        ? [
+            {
+              title: t('navigation.resumeUpload'),
+              href: '/resumes/upload',
+              isActive: false,
+              disabled: false,
+            },
+          ]
+        : []),
       {
         title: t('navigation.settings'),
         href: '/settings',
@@ -94,7 +99,7 @@ export function Dashboard() {
         disabled: false,
       },
     ],
-    [t]
+    [canCreateResumes, t]
   )
 
   useEffect(() => {
@@ -165,12 +170,14 @@ export function Dashboard() {
                 {t('dashboard.actions.viewResumes')}
               </Link>
             </Button>
-            <Button asChild>
-              <Link to='/resumes/upload'>
-                <Upload />
-                {t('dashboard.actions.uploadResume')}
-              </Link>
-            </Button>
+            {canCreateResumes ? (
+              <Button asChild>
+                <Link to='/resumes/upload'>
+                  <Upload />
+                  {t('dashboard.actions.uploadResume')}
+                </Link>
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -221,11 +228,15 @@ export function Dashboard() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <Button asChild>
-                <Link to='/resumes/upload'>{t('dashboard.empty.action')}</Link>
-              </Button>
-            </CardContent>
+            {canCreateResumes ? (
+              <CardContent>
+                <Button asChild>
+                  <Link to='/resumes/upload'>
+                    {t('dashboard.empty.action')}
+                  </Link>
+                </Button>
+              </CardContent>
+            ) : null}
           </Card>
         ) : summary ? (
           <Tabs
