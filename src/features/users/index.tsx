@@ -15,7 +15,7 @@ const route = getRouteApi('/_authenticated/users/')
 
 export function Users() {
   const { t } = useTranslation()
-  const users = route.useLoaderData()
+  const { roleOptions, users } = route.useLoaderData()
   const search = route.useSearch()
   const navigate = route.useNavigate()
 
@@ -40,7 +40,12 @@ export function Users() {
           </div>
           <UsersPrimaryButtons />
         </div>
-        <UsersTable data={users} search={search} navigate={navigate} />
+        <UsersTable
+          data={users}
+          roleOptions={roleOptions}
+          search={search}
+          navigate={navigate}
+        />
       </Main>
 
       <UsersDialogs />

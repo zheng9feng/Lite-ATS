@@ -1,8 +1,7 @@
 import z from 'zod'
 import { createFileRoute } from '@tanstack/react-router'
 import { Users } from '@/features/users'
-import { roles } from '@/features/users/data/data'
-import { listUsers } from '@/features/users/data/users-api'
+import { listUserRoleOptions, listUsers } from '@/features/users/data/users-api'
 
 const usersSearchSchema = z.object({
   page: z.number().optional().catch(1),
@@ -19,16 +18,20 @@ const usersSearchSchema = z.object({
     )
     .optional()
     .catch([]),
-  role: z
-    .array(z.enum(roles.map((r) => r.value as (typeof roles)[number]['value'])))
-    .optional()
-    .catch([]),
+  role: z.array(z.string()).optional().catch([]),
   // Per-column text filter (example for username)
   username: z.string().optional().catch(''),
 })
 
 export const Route = createFileRoute('/_authenticated/users/')({
   validateSearch: usersSearchSchema,
-  loader: () => listUsers(),
+  loader: async () => {
+    const [users, roleOptions] = await Promise.all([
+      listUsers(),
+      listUserRoleOptions(),
+    ])
+
+    return { roleOptions, users }
+  },
   component: Users,
 })

@@ -51,7 +51,12 @@ function renderUsersTable() {
   return render(
     <LanguageProvider>
       <UsersProvider>
-        <UsersTable data={users} navigate={vi.fn()} search={{}} />
+        <UsersTable
+          data={users}
+          navigate={vi.fn()}
+          roleOptions={[{ name: 'admin' }, { name: 'normal' }]}
+          search={{}}
+        />
       </UsersProvider>
     </LanguageProvider>
   )
@@ -89,7 +94,7 @@ describe('Users table i18n', () => {
     await expect.element(getByText('用户名')).toBeInTheDocument()
     await expect.element(getByText('姓名')).not.toBeInTheDocument()
     await expect.element(getByText('邮箱')).toBeInTheDocument()
-    await expect.element(getByText('电话号码')).toBeInTheDocument()
+    await expect.element(getByText('电话号码')).not.toBeInTheDocument()
 
     await expect.element(getByText('已暂停')).toBeInTheDocument()
     await expect.element(getByText('已启用')).toBeInTheDocument()
@@ -97,6 +102,21 @@ describe('Users table i18n', () => {
     await expect.element(getByText('经理')).toBeInTheDocument()
     await expect.element(getByText('收银员')).toBeInTheDocument()
     await expect.element(getByText('管理员')).toBeInTheDocument()
+
+    await userEvent.click(getByRole('button', { name: '角色' }))
+
+    await expect
+      .element(getByRole('option', { name: /管理员/ }))
+      .toBeInTheDocument()
+    await expect
+      .element(getByRole('option', { name: /普通用户/ }))
+      .toBeInTheDocument()
+    await expect
+      .element(getByRole('option', { name: /经理/ }))
+      .not.toBeInTheDocument()
+    await expect
+      .element(getByRole('option', { name: /收银员/ }))
+      .not.toBeInTheDocument()
   })
 
   it('renders the row action menu in Chinese by default', async () => {

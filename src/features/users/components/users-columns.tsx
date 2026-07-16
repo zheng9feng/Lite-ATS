@@ -90,20 +90,6 @@ export function getUsersColumns(t: TFunction): ColumnDef<User>[] {
       },
     },
     {
-      accessorKey: 'phoneNumber',
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t('usersPage.columns.phoneNumber')}
-        />
-      ),
-      cell: ({ row }) => <div>{row.getValue('phoneNumber')}</div>,
-      meta: {
-        columnLabel: t('usersPage.columns.phoneNumber'),
-      },
-      enableSorting: false,
-    },
-    {
       accessorKey: 'status',
       header: ({ column }) => (
         <DataTableColumnHeader

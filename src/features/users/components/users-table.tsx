@@ -25,6 +25,7 @@ import {
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { roles } from '../data/data'
 import { type User } from '../data/schema'
+import { type UserRoleOption } from '../data/users-api'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import {
   getUserRoleLabel,
@@ -34,11 +35,17 @@ import {
 
 type DataTableProps = {
   data: User[]
+  roleOptions?: Pick<UserRoleOption, 'name'>[]
   search: Record<string, unknown>
   navigate: NavigateFn
 }
 
-export function UsersTable({ data, search, navigate }: DataTableProps) {
+export function UsersTable({
+  data,
+  roleOptions,
+  search,
+  navigate,
+}: DataTableProps) {
   const { t } = useTranslation()
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
@@ -136,10 +143,18 @@ export function UsersTable({ data, search, navigate }: DataTableProps) {
           {
             columnId: 'role',
             title: t('usersPage.filters.role'),
-            options: roles.map((role) => ({
-              ...role,
-              label: getUserRoleLabel(t, role.value),
-            })),
+            options: (roleOptions ?? roles).map((role) => {
+              const roleName = 'name' in role ? role.name : role.value
+              const rolePresentation = roles.find(
+                ({ value }) => value === roleName
+              )
+
+              return {
+                icon: rolePresentation?.icon,
+                label: getUserRoleLabel(t, roleName),
+                value: roleName,
+              }
+            }),
           },
         ]}
       />
