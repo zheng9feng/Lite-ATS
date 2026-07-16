@@ -33,6 +33,18 @@ function apiUrl(path: string) {
   return `${apiBaseUrl}${path}`
 }
 
+function apiResourceUrl(url: string) {
+  try {
+    return new URL(url).href
+  } catch {
+    return apiUrl(url)
+  }
+}
+
+function absoluteApiResourceUrl(url: string) {
+  return new URL(apiResourceUrl(url), window.location.origin).href
+}
+
 function authHeaders() {
   const { sessionToken } = useAuthStore.getState().auth
 
@@ -131,7 +143,7 @@ export async function listResumes(): Promise<ResumeFile[]> {
 }
 
 export async function fetchResumeFile(previewUrl: string): Promise<Blob> {
-  const response = await fetch(previewUrl, {
+  const response = await fetch(apiResourceUrl(previewUrl), {
     headers: authHeaders(),
   })
 
@@ -190,5 +202,10 @@ export async function createResumeShareLink(
     method: 'POST',
   })
 
-  return parseApiResponse<ResumeShareLink>(response)
+  const share = await parseApiResponse<ResumeShareLink>(response)
+
+  return {
+    ...share,
+    shareUrl: absoluteApiResourceUrl(share.shareUrl),
+  }
 }

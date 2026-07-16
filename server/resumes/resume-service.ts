@@ -153,12 +153,6 @@ function requirePdfFile(file: UploadedResumeFile) {
   }
 }
 
-function toPublicResume(record: StoredResumeRecord): StoredResume {
-  const { objectName: _objectName, ...resume } = record
-
-  return resume
-}
-
 export function createResumeService({
   bucketName,
   createId = randomUUID,
@@ -170,6 +164,23 @@ export function createResumeService({
   storage,
 }: CreateResumeServiceOptions) {
   const normalizedPublicApiUrl = trimTrailingSlash(publicApiUrl)
+
+  function publicApiResourceUrl(path: string) {
+    return `${normalizedPublicApiUrl}${path}`
+  }
+
+  function toPublicResume(record: StoredResumeRecord): StoredResume {
+    const {
+      objectName: _objectName,
+      previewUrl: _storedPreviewUrl,
+      ...resume
+    } = record
+
+    return {
+      ...resume,
+      previewUrl: publicApiResourceUrl(`/api/resumes/${record.id}/file`),
+    }
+  }
 
   function createStoredResumeRecord({
     applicant,
@@ -196,7 +207,7 @@ export function createResumeService({
       id,
       jobPositionId,
       objectName,
-      previewUrl: `${normalizedPublicApiUrl}/api/resumes/${id}/file`,
+      previewUrl: publicApiResourceUrl(`/api/resumes/${id}/file`),
       uploadedAt: uploadedAt.toISOString(),
     }
   }
@@ -429,7 +440,7 @@ export function createResumeService({
 
     return {
       expiresAt: expiresAt.toISOString(),
-      shareUrl: `${normalizedPublicApiUrl}/api/resume-shares/${token}`,
+      shareUrl: publicApiResourceUrl(`/api/resume-shares/${token}`),
       token,
     }
   }

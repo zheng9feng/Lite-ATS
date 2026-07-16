@@ -25,7 +25,7 @@ services:
       MINIO_USE_SSL: "false"
       RESUME_API_HOST: 0.0.0.0
       RESUME_API_PORT: ${APP_PORT:-3001}
-      RESUME_API_PUBLIC_URL: ${RESUME_API_PUBLIC_URL:-http://localhost:${APP_PORT:-3001}}
+      RESUME_API_PUBLIC_URL: ${RESUME_API_PUBLIC_URL:-}
       RESUME_DATABASE_PATH: /app/server/.data/resumes.sqlite
       RESUME_SHARE_TTL_MINUTES: ${RESUME_SHARE_TTL_MINUTES:-60}
     healthcheck:

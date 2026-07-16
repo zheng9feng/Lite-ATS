@@ -118,10 +118,12 @@ on port `9001`. Compose stores SQLite and MinIO data in named volumes, so both
 survive container restarts.
 
 Compose reads `.env` automatically. Change `LOCAL_ADMIN_PASSWORD` and the
-MinIO credentials before exposing the deployment. Set `RESUME_API_PUBLIC_URL`
-to the externally reachable origin, such as `https://ats.example.com`. This is
-required for generated resume links to work outside the server. If you publish
-the app directly on a port other than `3001`, include that port in the URL.
+MinIO credentials before exposing the deployment. API requests and generated
+resume links use the browser's current origin by default, so they work when the
+app is reached through a server IP, a custom port, or an HTTPS reverse proxy.
+Set `RESUME_API_PUBLIC_URL` only when generated API resource URLs must use a
+different public origin, such as a separately hosted API. Loopback values such
+as `http://localhost:3001` fall back to safe same-origin paths.
 
 Check the deployment or stop it with:
 
@@ -141,7 +143,7 @@ docker compose -f docker/docker-compose.yml down
 | `APP_STATIC_DIRECTORY`       | empty                         | Built frontend directory served by Express in production.           |
 | `RESUME_API_HOST`            | `127.0.0.1`                   | Address the Express API listens on. Compose overrides to `0.0.0.0`. |
 | `RESUME_API_PORT`            | `3001`                        | Express port outside Compose; Compose derives it from `APP_PORT`.   |
-| `RESUME_API_PUBLIC_URL`      | `http://localhost:3001`       | Public URL used when generating resume preview and share links.     |
+| `RESUME_API_PUBLIC_URL`      | empty                         | Optional public API origin for generated preview and share links.   |
 | `RESUME_DATABASE_PATH`       | `server/.data/resumes.sqlite` | SQLite database path.                                               |
 | `RESUME_SHARE_TTL_MINUTES`   | `60`                          | Lifetime for public resume share links.                             |
 | `LOCAL_ADMIN_EMAIL`          | empty                         | Admin seed email. No admin is seeded when empty.                    |

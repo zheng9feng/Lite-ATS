@@ -163,6 +163,23 @@ describe('resume API client', () => {
     )
   })
 
+  it('resolves a same-origin share path to a copyable absolute URL', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        expiresAt: '2026-06-21T09:00:00.000Z',
+        shareUrl: '/api/resume-shares/share-token',
+        token: 'share-token',
+      }),
+    })
+
+    const share = await createResumeShareLink('resume-1')
+
+    expect(share.shareUrl).toBe(
+      `${window.location.origin}/api/resume-shares/share-token`
+    )
+  })
+
   it('lists stored resume metadata from the API', async () => {
     fetch.mockResolvedValue({
       ok: true,

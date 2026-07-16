@@ -12,6 +12,26 @@ describe('resolveServerConfig', () => {
     ).toBe('0.0.0.0')
   })
 
+  it('uses same-origin API resource URLs by default', () => {
+    expect(resolveServerConfig({}).publicApiUrl).toBe('')
+  })
+
+  it('uses the configured public API URL', () => {
+    expect(
+      resolveServerConfig({
+        RESUME_API_PUBLIC_URL: 'https://ats.example.com',
+      }).publicApiUrl
+    ).toBe('https://ats.example.com')
+  })
+
+  it('falls back to same-origin paths for a loopback public URL', () => {
+    expect(
+      resolveServerConfig({
+        RESUME_API_PUBLIC_URL: 'http://localhost:3001',
+      }).publicApiUrl
+    ).toBe('')
+  })
+
   it('uses the default SQLite database path when none is configured', () => {
     expect(resolveServerConfig({}).databasePath).toBe(
       'server/.data/resumes.sqlite'

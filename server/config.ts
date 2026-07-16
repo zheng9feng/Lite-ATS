@@ -10,6 +10,27 @@ function readNumber(value: string | undefined, fallback: number) {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+function readPublicApiUrl(value: string | undefined) {
+  if (!value) return ''
+
+  try {
+    const url = new URL(value)
+
+    if (
+      url.hostname === 'localhost' ||
+      url.hostname === '127.0.0.1' ||
+      url.hostname === '0.0.0.0' ||
+      url.hostname === '[::1]'
+    ) {
+      return ''
+    }
+  } catch {
+    return value
+  }
+
+  return value
+}
+
 export function loadServerEnv() {
   try {
     loadEnvFile()
@@ -39,8 +60,7 @@ export function resolveServerConfig(env: ServerEnv = process.env) {
       password: env.LOCAL_ADMIN_PASSWORD ?? '',
     },
     minio: resolveMinioConfig(env),
-    publicApiUrl:
-      env.RESUME_API_PUBLIC_URL ?? `http://localhost:${apiPort}`,
+    publicApiUrl: readPublicApiUrl(env.RESUME_API_PUBLIC_URL),
     resumeApiHost: env.RESUME_API_HOST ?? '127.0.0.1',
     resumeApiPort: apiPort,
     shareTtlMinutes: readNumber(env.RESUME_SHARE_TTL_MINUTES, 60),

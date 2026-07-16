@@ -124,6 +124,41 @@ describe('createResumeService', () => {
     })
   })
 
+  it('uses same-origin API paths when no public API URL is configured', async () => {
+    const repository = createMemoryResumeRepository()
+    repository.saveResume({
+      applicant: {
+        email: 'ava@example.com',
+        name: 'Ava Chen',
+        positionApplied: 'Frontend Engineer',
+      },
+      fileName: 'ava.pdf',
+      fileSize: 3,
+      fileType: 'application/pdf',
+      id: 'resume-1',
+      jobPositionId: null,
+      objectName: 'resumes/resume-1/ava.pdf',
+      previewUrl: 'http://localhost:3001/api/resumes/resume-1/file',
+      uploadedAt: now.toISOString(),
+    })
+    const service = createResumeService({
+      bucketName: 'resumes',
+      createId,
+      createToken,
+      getNow,
+      publicApiUrl: '',
+      repository,
+      storage,
+    })
+
+    expect(service.listResumes()[0]?.previewUrl).toBe(
+      '/api/resumes/resume-1/file'
+    )
+    expect(service.createShareLink('resume-1').shareUrl).toBe(
+      '/api/resume-shares/share-token'
+    )
+  })
+
   it('stores the selected database job position with resume metadata', async () => {
     const service = createResumeService({
       bucketName: 'resumes',
