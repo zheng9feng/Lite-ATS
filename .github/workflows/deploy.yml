@@ -1,0 +1,91 @@
+name: Deploy to Production
+
+on:
+  workflow_run:
+    workflows:
+      - Continuous Integration
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+
+    steps:
+      - name: Validate deployment configuration
+        env:
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_HOST" || { echo 'DEPLOY_HOST is not set'; exit 1; }
+          test -n "$DEPLOY_PORT" || { echo 'DEPLOY_PORT is not set'; exit 1; }
+          test -n "$DEPLOY_USER" || { echo 'DEPLOY_USER is not set'; exit 1; }
+          test -n "$DEPLOY_KNOWN_HOSTS" || { echo 'DEPLOY_KNOWN_HOSTS is not set'; exit 1; }
+          test -n "$DEPLOY_SSH_PRIVATE_KEY" || { echo 'DEPLOY_SSH_PRIVATE_KEY is not set'; exit 1; }
+
+      - name: Configure SSH
+        env:
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+        run: |
+          set -Eeuo pipefail
+          install -d -m 700 "$RUNNER_TEMP/deploy-ssh"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/deploy-ssh/key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/deploy-ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/deploy-ssh/key"
+          chmod 600 "$RUNNER_TEMP/deploy-ssh/known_hosts"
+
+      - name: Deploy application
+        run: |
+          set -Eeuo pipefail
+          ssh \
+            -i "$RUNNER_TEMP/deploy-ssh/key" \
+            -p "$DEPLOY_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$RUNNER_TEMP/deploy-ssh/known_hosts" \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 \
+            "$DEPLOY_USER@$DEPLOY_HOST" 'bash -se' <<'REMOTE_SCRIPT'
+          set -Eeuo pipefail
+
+          cd "$HOME/Lite-ATS"
+
+          if [[ "$(git branch --show-current)" != 'main' ]]; then
+            echo 'Deployment repository is not on the main branch' >&2
+            exit 1
+          fi
+
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            echo 'Deployment repository has modified tracked files' >&2
+            exit 1
+          fi
+
+          git pull --ff-only origin main
+          docker compose -f docker/docker-compose.yml config --quiet
+          docker compose -f docker/docker-compose.yml up \
+            --build \
+            --detach \
+            --wait \
+            --remove-orphans
+          docker compose -f docker/docker-compose.yml ps
+          REMOTE_SCRIPT
