@@ -716,6 +716,7 @@ export const resources = {
             namePlaceholder: '搜索申请人姓名',
             noResults: '没有符合筛选条件的简历。',
             position: '职位',
+            unassignedPosition: '未分配职位',
             uploadedDate: '上传日期',
           },
           loading: {
@@ -1485,6 +1486,7 @@ export const resources = {
             namePlaceholder: 'Search applicant name',
             noResults: 'No resumes match these filters.',
             position: 'Position',
+            unassignedPosition: 'Unassigned position',
             uploadedDate: 'Upload date',
           },
           loading: {

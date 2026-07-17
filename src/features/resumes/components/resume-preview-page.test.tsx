@@ -283,6 +283,28 @@ describe('ResumePreviewPage', () => {
     await expect.element(getByText(/^Candidate 3$/)).toBeInTheDocument()
   })
 
+  it('filters empty and reserved position values without crashing', async () => {
+    const unassignedResume = createStoredResume(1)
+    const allResume = createStoredResume(2)
+
+    unassignedResume.applicant.positionApplied = ''
+    allResume.applicant.positionApplied = 'all'
+    useResumeStore.setState({ resumes: [unassignedResume, allResume] })
+
+    const { getByRole, getByText } = await renderResumePreviewPage()
+    const positionFilter = getByRole('combobox', { name: '职位' })
+
+    await userEvent.click(positionFilter)
+    await userEvent.click(getByRole('option', { name: '未分配职位' }))
+    await expect.element(getByText(/^Candidate 1$/)).toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 2$/)).not.toBeInTheDocument()
+
+    await userEvent.click(positionFilter)
+    await userEvent.click(getByRole('option', { name: 'all' }))
+    await expect.element(getByText(/^Candidate 2$/)).toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 1$/)).not.toBeInTheDocument()
+  })
+
   it('shows a dedicated empty state when filters have no matches', async () => {
     useResumeStore.setState({
       resumes: [createStoredResume(1)],

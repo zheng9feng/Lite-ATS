@@ -129,7 +129,8 @@ function createEditResumeFormSchema(t: TFunction) {
 
 type EditResumeForm = z.infer<ReturnType<typeof createEditResumeFormSchema>>
 
-const ALL_POSITIONS_VALUE = 'all'
+const ALL_POSITIONS_SELECT_VALUE = 'all'
+const POSITION_SELECT_VALUE_PREFIX = 'position:'
 
 type EditResumePayload = {
   applicant: ResumeFile['applicant']
@@ -140,6 +141,14 @@ type EditResumePayload = {
 
 function formatUploadedAt(value: string) {
   return format(new Date(value), 'yyyy-MM-dd')
+}
+
+function encodePositionSelectValue(position: string) {
+  return `${POSITION_SELECT_VALUE_PREFIX}${encodeURIComponent(position)}`
+}
+
+function decodePositionSelectValue(value: string) {
+  return decodeURIComponent(value.slice(POSITION_SELECT_VALUE_PREFIX.length))
 }
 
 function getApplicantInitials(name: string) {
@@ -477,7 +486,7 @@ export function ResumePreviewPage() {
   const [editingResume, setEditingResume] = useState<ResumeFile | null>(null)
   const [isLoadingResumes, setIsLoadingResumes] = useState(true)
   const [nameFilter, setNameFilter] = useState('')
-  const [positionFilter, setPositionFilter] = useState(ALL_POSITIONS_VALUE)
+  const [positionFilter, setPositionFilter] = useState<string | null>(null)
   const [sharingResumeId, setSharingResumeId] = useState<string | null>(null)
   const [uploadedDateFilter, setUploadedDateFilter] = useState('')
   const [pagination, setPagination] = useState<PaginationState>({
@@ -602,7 +611,7 @@ export function ResumePreviewPage() {
       }
 
       if (
-        positionFilter !== ALL_POSITIONS_VALUE &&
+        positionFilter !== null &&
         resume.applicant.positionApplied !== positionFilter
       ) {
         return false
@@ -620,9 +629,7 @@ export function ResumePreviewPage() {
   }, [nameFilter, positionFilter, resumes, uploadedDateFilter])
 
   const hasActiveFilters =
-    nameFilter !== '' ||
-    positionFilter !== ALL_POSITIONS_VALUE ||
-    uploadedDateFilter !== ''
+    nameFilter !== '' || positionFilter !== null || uploadedDateFilter !== ''
 
   const resetPagination = () => {
     setPagination((current) => ({ ...current, pageIndex: 0 }))
@@ -630,7 +637,7 @@ export function ResumePreviewPage() {
 
   const clearFilters = () => {
     setNameFilter('')
-    setPositionFilter(ALL_POSITIONS_VALUE)
+    setPositionFilter(null)
     setUploadedDateFilter('')
     resetPagination()
   }
@@ -871,9 +878,17 @@ export function ResumePreviewPage() {
                   {t('resumes.preview.filters.position')}
                 </Label>
                 <Select
-                  value={positionFilter}
+                  value={
+                    positionFilter === null
+                      ? ALL_POSITIONS_SELECT_VALUE
+                      : encodePositionSelectValue(positionFilter)
+                  }
                   onValueChange={(value) => {
-                    setPositionFilter(value)
+                    setPositionFilter(
+                      value === ALL_POSITIONS_SELECT_VALUE
+                        ? null
+                        : decodePositionSelectValue(value)
+                    )
                     resetPagination()
                   }}
                 >
@@ -885,12 +900,16 @@ export function ResumePreviewPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value={ALL_POSITIONS_VALUE}>
+                      <SelectItem value={ALL_POSITIONS_SELECT_VALUE}>
                         {t('resumes.preview.filters.allPositions')}
                       </SelectItem>
                       {positionOptions.map((position) => (
-                        <SelectItem key={position} value={position}>
-                          {position}
+                        <SelectItem
+                          key={position}
+                          value={encodePositionSelectValue(position)}
+                        >
+                          {position ||
+                            t('resumes.preview.filters.unassignedPosition')}
                         </SelectItem>
                       ))}
                     </SelectGroup>
