@@ -9,21 +9,33 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   install-lint-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+        uses: actions/checkout@v6
 
       - name: Install pnpm
-        run: npm install -g pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.8.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -37,11 +49,14 @@ jobs:
       - name: Run Prettier check
         run: pnpm format:check
 
+      - name: Build the project
+        run: pnpm build
+
+      - name: Run server tests
+        run: pnpm test:server
+
       - name: Install browsers
         run: pnpm test:browser:install
 
-      - name: Run tests
+      - name: Run frontend tests
         run: pnpm test
-
-      - name: Build the project
-        run: pnpm build

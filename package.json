@@ -3,6 +3,7 @@
   "private": false,
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "pnpm@11.8.0",
   "scripts": {
     "dev": "vite",
     "dev:api": "tsx watch server/index.ts",
