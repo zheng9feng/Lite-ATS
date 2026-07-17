@@ -21,6 +21,7 @@ import {
   Share2,
   Trash2,
   Upload,
+  X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -80,6 +81,7 @@ import {
 import { ConfigDrawer } from '@/components/config-drawer'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTablePagination } from '@/components/data-table'
+import { DatePicker } from '@/components/date-picker'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -823,40 +825,31 @@ export function ResumePreviewPage() {
         <ProfileDropdown />
       </Header>
 
-      <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
-        <div className='flex flex-wrap items-end justify-between gap-2'>
-          <div>
-            <h2 className='text-2xl font-bold tracking-tight'>
-              {t('resumes.preview.title')}
-            </h2>
-            <p className='text-muted-foreground'>
-              {t('resumes.preview.subtitle')}
-            </p>
+      <Main className='flex flex-1 flex-col gap-4'>
+        <div className='overflow-hidden rounded-xl border bg-card shadow-xs'>
+          <div className='flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-5'>
+            <div className='min-w-0'>
+              <h2 className='text-xl font-bold tracking-tight sm:text-2xl'>
+                {t('resumes.preview.title')}
+              </h2>
+              <p className='mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base'>
+                {t('resumes.preview.subtitle')}
+              </p>
+            </div>
+            {canCreateResumes ? (
+              <Button asChild className='shrink-0 self-start' variant='outline'>
+                <Link to='/resumes/upload'>
+                  <Upload data-icon='inline-start' />
+                  {t('resumes.preview.uploadAnother')}
+                </Link>
+              </Button>
+            ) : null}
           </div>
-          {canCreateResumes ? (
-            <Button asChild variant='outline'>
-              <Link to='/resumes/upload'>
-                <Upload />
-                {t('resumes.preview.uploadAnother')}
-              </Link>
-            </Button>
-          ) : null}
-        </div>
 
-        {isLoadingResumes && resumes.length === 0 ? (
-          <Card className='max-w-2xl'>
-            <CardHeader>
-              <CardTitle>{t('resumes.preview.loading.title')}</CardTitle>
-              <CardDescription>
-                {t('resumes.preview.loading.description')}
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        ) : resumes.length > 0 ? (
-          <div className='flex flex-1 flex-col gap-4'>
+          {resumes.length > 0 ? (
             <div
               aria-label={t('resumes.preview.filters.label')}
-              className='grid gap-3 rounded-xl border bg-card p-4 shadow-xs sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,12rem)_auto]'
+              className='grid gap-3 border-t bg-muted/20 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,13rem)_auto]'
               role='search'
             >
               <div className='flex flex-col gap-1.5'>
@@ -920,12 +913,21 @@ export function ResumePreviewPage() {
                 <Label htmlFor='resume-uploaded-date-filter'>
                   {t('resumes.preview.filters.uploadedDate')}
                 </Label>
-                <Input
+                <DatePicker
+                  className='w-full'
                   id='resume-uploaded-date-filter'
-                  type='date'
-                  value={uploadedDateFilter}
-                  onChange={(event) => {
-                    setUploadedDateFilter(event.target.value)
+                  placeholder={t(
+                    'resumes.preview.filters.uploadedDatePlaceholder'
+                  )}
+                  selected={
+                    uploadedDateFilter
+                      ? new Date(`${uploadedDateFilter}T00:00:00`)
+                      : undefined
+                  }
+                  onSelect={(date) => {
+                    setUploadedDateFilter(
+                      date ? format(date, 'yyyy-MM-dd') : ''
+                    )
                     resetPagination()
                   }}
                 />
@@ -934,12 +936,27 @@ export function ResumePreviewPage() {
                 className='self-end'
                 disabled={!hasActiveFilters}
                 type='button'
-                variant='outline'
+                variant='ghost'
                 onClick={clearFilters}
               >
+                <X data-icon='inline-start' />
                 {t('resumes.preview.filters.clear')}
               </Button>
             </div>
+          ) : null}
+        </div>
+
+        {isLoadingResumes && resumes.length === 0 ? (
+          <Card className='max-w-2xl'>
+            <CardHeader>
+              <CardTitle>{t('resumes.preview.loading.title')}</CardTitle>
+              <CardDescription>
+                {t('resumes.preview.loading.description')}
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        ) : resumes.length > 0 ? (
+          <div className='flex flex-1 flex-col gap-4'>
             <div className='overflow-hidden rounded-xl border bg-card shadow-xs'>
               <Table className='min-w-190'>
                 <TableHeader className='bg-muted/40'>

@@ -1,3 +1,5 @@
+import { format, subDays } from 'date-fns'
+import { zhCN } from 'react-day-picker/locale'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
@@ -247,11 +249,14 @@ describe('ResumePreviewPage', () => {
   })
 
   it('filters resumes by applicant name, position, and upload date', async () => {
+    const uploadFilterDate = subDays(new Date(), 1)
+    const uploadFilterResume = createStoredResume(3)
+    uploadFilterResume.uploadedAt = `${format(uploadFilterDate, 'yyyy-MM-dd')}T08:00:00.000Z`
     useResumeStore.setState({
       resumes: [
         createStoredResume(1),
         createStoredResume(2),
-        createStoredResume(3),
+        uploadFilterResume,
       ],
     })
 
@@ -273,7 +278,13 @@ describe('ResumePreviewPage', () => {
     await expect.element(getByText(/^Candidate 3$/)).not.toBeInTheDocument()
 
     await userEvent.click(clearButton)
-    await userEvent.fill(getByLabelText('上传日期'), '2026-06-03')
+    await expect.element(getByText('年/月/日')).toBeInTheDocument()
+    await userEvent.click(getByLabelText('上传日期'))
+    await userEvent.click(
+      getByRole('button', {
+        name: format(uploadFilterDate, 'PPPP', { locale: zhCN }),
+      })
+    )
     await expect.element(getByText(/^Candidate 3$/)).toBeInTheDocument()
     await expect.element(getByText(/^Candidate 2$/)).not.toBeInTheDocument()
 

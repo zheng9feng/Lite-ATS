@@ -718,6 +718,7 @@ export const resources = {
             position: '职位',
             unassignedPosition: '未分配职位',
             uploadedDate: '上传日期',
+            uploadedDatePlaceholder: '年/月/日',
           },
           loading: {
             description: '正在检查已存储的简历元数据。',
@@ -1488,6 +1489,7 @@ export const resources = {
             position: 'Position',
             unassignedPosition: 'Unassigned position',
             uploadedDate: 'Upload date',
+            uploadedDatePlaceholder: 'YYYY/MM/DD',
           },
           loading: {
             description: 'Checking stored resume metadata.',
