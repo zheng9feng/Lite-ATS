@@ -246,6 +246,61 @@ describe('ResumePreviewPage', () => {
     await expect.element(getByText('candidate-2.pdf')).not.toBeInTheDocument()
   })
 
+  it('filters resumes by applicant name, position, and upload date', async () => {
+    useResumeStore.setState({
+      resumes: [
+        createStoredResume(1),
+        createStoredResume(2),
+        createStoredResume(3),
+      ],
+    })
+
+    const { getByLabelText, getByPlaceholder, getByRole, getByText } =
+      await renderResumePreviewPage()
+    const clearButton = getByRole('button', { name: '清除筛选' })
+
+    await userEvent.fill(
+      getByPlaceholder('搜索申请人姓名', { exact: true }),
+      'Candidate 2'
+    )
+    await expect.element(getByText(/^Candidate 2$/)).toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 1$/)).not.toBeInTheDocument()
+
+    await userEvent.click(clearButton)
+    await userEvent.click(getByRole('combobox', { name: '职位' }))
+    await userEvent.click(getByRole('option', { name: 'Designer' }))
+    await expect.element(getByText(/^Candidate 2$/)).toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 3$/)).not.toBeInTheDocument()
+
+    await userEvent.click(clearButton)
+    await userEvent.fill(getByLabelText('上传日期'), '2026-06-03')
+    await expect.element(getByText(/^Candidate 3$/)).toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 2$/)).not.toBeInTheDocument()
+
+    await userEvent.click(clearButton)
+    await expect.element(getByText(/^Candidate 1$/)).toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 2$/)).toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 3$/)).toBeInTheDocument()
+  })
+
+  it('shows a dedicated empty state when filters have no matches', async () => {
+    useResumeStore.setState({
+      resumes: [createStoredResume(1)],
+    })
+
+    const { getByPlaceholder, getByText } = await renderResumePreviewPage()
+
+    await userEvent.fill(
+      getByPlaceholder('搜索申请人姓名', { exact: true }),
+      'No matching applicant'
+    )
+
+    await expect
+      .element(getByText('没有符合筛选条件的简历。'))
+      .toBeInTheDocument()
+    await expect.element(getByText('暂无可预览的简历')).not.toBeInTheDocument()
+  })
+
   it('paginates uploaded applicants', async () => {
     useResumeStore.setState({
       resumes: Array.from({ length: 11 }, (_, index) =>
@@ -319,13 +374,16 @@ describe('ResumePreviewPage', () => {
       type: 'application/pdf',
     })
 
-    const { getByLabelText, getByRole, getByText } =
+    const { getByLabelText, getByPlaceholder, getByRole, getByText } =
       await renderResumePreviewPage()
 
     await userEvent.click(
       getByRole('button', { name: /编辑 Candidate 1 的简历/i })
     )
-    await userEvent.fill(getByLabelText('姓名'), 'Updated Candidate')
+    await userEvent.fill(
+      getByPlaceholder('申请人姓名', { exact: true }),
+      'Updated Candidate'
+    )
     await userEvent.fill(getByLabelText('邮箱'), 'updated@example.com')
     await userEvent.click(getByRole('combobox', { name: '申请职位' }))
     await userEvent.click(getByRole('option', { name: 'Product Engineer' }))

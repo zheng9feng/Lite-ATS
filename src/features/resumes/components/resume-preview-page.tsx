@@ -57,6 +57,14 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Table,
   TableBody,
   TableCell,
@@ -120,6 +128,8 @@ function createEditResumeFormSchema(t: TFunction) {
 }
 
 type EditResumeForm = z.infer<ReturnType<typeof createEditResumeFormSchema>>
+
+const ALL_POSITIONS_VALUE = 'all'
 
 type EditResumePayload = {
   applicant: ResumeFile['applicant']
@@ -466,7 +476,10 @@ export function ResumePreviewPage() {
   const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null)
   const [editingResume, setEditingResume] = useState<ResumeFile | null>(null)
   const [isLoadingResumes, setIsLoadingResumes] = useState(true)
+  const [nameFilter, setNameFilter] = useState('')
+  const [positionFilter, setPositionFilter] = useState(ALL_POSITIONS_VALUE)
   const [sharingResumeId, setSharingResumeId] = useState<string | null>(null)
+  const [uploadedDateFilter, setUploadedDateFilter] = useState('')
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -568,6 +581,59 @@ export function ResumePreviewPage() {
       setDeletingResumeId(null)
     }
   }, [deletingResume, removeResume, t])
+
+  const positionOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(resumes.map((resume) => resume.applicant.positionApplied))
+      ).sort((first, second) => first.localeCompare(second)),
+    [resumes]
+  )
+
+  const filteredResumes = useMemo(() => {
+    const normalizedName = nameFilter.trim().toLocaleLowerCase()
+
+    return resumes.filter((resume) => {
+      if (
+        normalizedName &&
+        !resume.applicant.name.toLocaleLowerCase().includes(normalizedName)
+      ) {
+        return false
+      }
+
+      if (
+        positionFilter !== ALL_POSITIONS_VALUE &&
+        resume.applicant.positionApplied !== positionFilter
+      ) {
+        return false
+      }
+
+      if (
+        uploadedDateFilter &&
+        formatUploadedAt(resume.uploadedAt) !== uploadedDateFilter
+      ) {
+        return false
+      }
+
+      return true
+    })
+  }, [nameFilter, positionFilter, resumes, uploadedDateFilter])
+
+  const hasActiveFilters =
+    nameFilter !== '' ||
+    positionFilter !== ALL_POSITIONS_VALUE ||
+    uploadedDateFilter !== ''
+
+  const resetPagination = () => {
+    setPagination((current) => ({ ...current, pageIndex: 0 }))
+  }
+
+  const clearFilters = () => {
+    setNameFilter('')
+    setPositionFilter(ALL_POSITIONS_VALUE)
+    setUploadedDateFilter('')
+    resetPagination()
+  }
 
   const columns = useMemo<ColumnDef<ResumeFile>[]>(
     () => [
@@ -731,7 +797,7 @@ export function ResumePreviewPage() {
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
-    data: resumes,
+    data: filteredResumes,
     columns,
     state: {
       pagination,
@@ -781,6 +847,80 @@ export function ResumePreviewPage() {
           </Card>
         ) : resumes.length > 0 ? (
           <div className='flex flex-1 flex-col gap-4'>
+            <div
+              aria-label={t('resumes.preview.filters.label')}
+              className='grid gap-3 rounded-xl border bg-card p-4 shadow-xs sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,12rem)_auto]'
+              role='search'
+            >
+              <div className='flex flex-col gap-1.5'>
+                <Label htmlFor='resume-name-filter'>
+                  {t('resumes.preview.filters.name')}
+                </Label>
+                <Input
+                  id='resume-name-filter'
+                  placeholder={t('resumes.preview.filters.namePlaceholder')}
+                  value={nameFilter}
+                  onChange={(event) => {
+                    setNameFilter(event.target.value)
+                    resetPagination()
+                  }}
+                />
+              </div>
+              <div className='flex flex-col gap-1.5'>
+                <Label id='resume-position-filter-label'>
+                  {t('resumes.preview.filters.position')}
+                </Label>
+                <Select
+                  value={positionFilter}
+                  onValueChange={(value) => {
+                    setPositionFilter(value)
+                    resetPagination()
+                  }}
+                >
+                  <SelectTrigger
+                    aria-labelledby='resume-position-filter-label'
+                    className='w-full'
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value={ALL_POSITIONS_VALUE}>
+                        {t('resumes.preview.filters.allPositions')}
+                      </SelectItem>
+                      {positionOptions.map((position) => (
+                        <SelectItem key={position} value={position}>
+                          {position}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className='flex flex-col gap-1.5'>
+                <Label htmlFor='resume-uploaded-date-filter'>
+                  {t('resumes.preview.filters.uploadedDate')}
+                </Label>
+                <Input
+                  id='resume-uploaded-date-filter'
+                  type='date'
+                  value={uploadedDateFilter}
+                  onChange={(event) => {
+                    setUploadedDateFilter(event.target.value)
+                    resetPagination()
+                  }}
+                />
+              </div>
+              <Button
+                className='self-end'
+                disabled={!hasActiveFilters}
+                type='button'
+                variant='outline'
+                onClick={clearFilters}
+              >
+                {t('resumes.preview.filters.clear')}
+              </Button>
+            </div>
             <div className='overflow-hidden rounded-xl border bg-card shadow-xs'>
               <Table className='min-w-190'>
                 <TableHeader className='bg-muted/40'>
@@ -807,29 +947,42 @@ export function ResumePreviewPage() {
                   ))}
                 </TableHeader>
                 <TableBody>
-                  {table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id} className='h-18'>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          className={
-                            cell.column.id === 'actions'
-                              ? 'px-4 py-3'
-                              : 'px-5 py-3'
-                          }
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
+                  {table.getRowModel().rows.length > 0 ? (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow key={row.id} className='h-18'>
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className={
+                              cell.column.id === 'actions'
+                                ? 'px-4 py-3'
+                                : 'px-5 py-3'
+                            }
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        className='h-24 text-center text-muted-foreground'
+                        colSpan={columns.length}
+                      >
+                        {t('resumes.preview.filters.noResults')}
+                      </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>
-            <DataTablePagination table={table} className='mt-auto' />
+            {filteredResumes.length > 0 ? (
+              <DataTablePagination table={table} className='mt-auto' />
+            ) : null}
           </div>
         ) : (
           <Card className='max-w-2xl'>

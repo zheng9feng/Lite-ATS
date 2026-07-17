@@ -708,6 +708,16 @@ export const resources = {
             load: '无法加载已存储的简历。',
             update: '无法更新简历。',
           },
+          filters: {
+            allPositions: '全部职位',
+            clear: '清除筛选',
+            label: '简历筛选',
+            name: '姓名',
+            namePlaceholder: '搜索申请人姓名',
+            noResults: '没有符合筛选条件的简历。',
+            position: '职位',
+            uploadedDate: '上传日期',
+          },
           loading: {
             description: '正在检查已存储的简历元数据。',
             title: '正在加载简历',
@@ -1466,6 +1476,16 @@ export const resources = {
             delete: 'Unable to delete resume.',
             load: 'Unable to load stored resumes.',
             update: 'Unable to update resume.',
+          },
+          filters: {
+            allPositions: 'All positions',
+            clear: 'Clear filters',
+            label: 'Resume filters',
+            name: 'Name',
+            namePlaceholder: 'Search applicant name',
+            noResults: 'No resumes match these filters.',
+            position: 'Position',
+            uploadedDate: 'Upload date',
           },
           loading: {
             description: 'Checking stored resume metadata.',
