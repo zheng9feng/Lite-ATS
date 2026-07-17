@@ -30,6 +30,17 @@ type CreateServerAppOptions = {
   staticDirectory?: string
 }
 
+const SPA_DOCUMENT_CACHE_CONTROL =
+  'no-store, no-cache, must-revalidate, proxy-revalidate'
+
+function setSpaDocumentCacheHeaders(
+  response: Pick<Response, 'setHeader'>
+) {
+  response.setHeader('Cache-Control', SPA_DOCUMENT_CACHE_CONTROL)
+  response.setHeader('Expires', '0')
+  response.setHeader('Pragma', 'no-cache')
+}
+
 const upload = multer({
   limits: {
     fileSize: 10 * 1024 * 1024,
@@ -687,8 +698,25 @@ export function createServerApp({
 
   if (staticDirectory) {
     const resolvedStaticDirectory = path.resolve(staticDirectory)
+    const assetsDirectory = path.join(resolvedStaticDirectory, 'assets')
 
-    app.use(express.static(resolvedStaticDirectory))
+    app.use(
+      express.static(resolvedStaticDirectory, {
+        setHeaders: (response, filePath) => {
+          if (filePath === path.join(resolvedStaticDirectory, 'index.html')) {
+            setSpaDocumentCacheHeaders(response)
+            return
+          }
+
+          if (filePath.startsWith(`${assetsDirectory}${path.sep}`)) {
+            response.setHeader(
+              'Cache-Control',
+              'public, max-age=31536000, immutable'
+            )
+          }
+        },
+      })
+    )
     app.use((request, response, next) => {
       if (
         request.method !== 'GET' ||
@@ -699,6 +727,7 @@ export function createServerApp({
         return
       }
 
+      setSpaDocumentCacheHeaders(response)
       response.sendFile(path.join(resolvedStaticDirectory, 'index.html'))
     })
   }
