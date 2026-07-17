@@ -110,26 +110,12 @@ Build the application image and start Lite ATS with MinIO:
 docker compose -f docker/docker-compose.yml up --build -d
 ```
 
-The application service uses Compose's `pull_policy: build`, so a regular
-`docker compose -f docker/docker-compose.yml up -d` also rebuilds the local
-image instead of silently reusing an older `lite-ats:local` image. Do not use
-`docker compose restart` to deploy source changes: it only restarts the
-existing container and does not rebuild the frontend bundle.
-
 For a local deployment, open `http://localhost:<APP_PORT>`. For a remote
 deployment, open `http://<server-ip>:<APP_PORT>` and allow the configured
 `APP_PORT` through the server firewall, or route that port through a reverse
 proxy. The default application port is `3001`. The MinIO console is available
-on port `9001`. Port `5173` is only the Vite development server and is not the
-Docker Compose deployment. Compose stores SQLite and MinIO data in named
-volumes, so both survive container restarts.
-
-After changing application source, redeploy and wait for the application
-health check with:
-
-```bash
-docker compose -f docker/docker-compose.yml up --build --wait -d
-```
+on port `9001`. Compose stores SQLite and MinIO data in named volumes, so both
+survive container restarts.
 
 Compose reads `.env` automatically. Change `LOCAL_ADMIN_PASSWORD` and the
 MinIO credentials before exposing the deployment. API requests and generated
