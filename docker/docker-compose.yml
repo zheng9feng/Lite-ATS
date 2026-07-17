@@ -8,6 +8,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     image: lite-ats:local
+    pull_policy: build
     restart: unless-stopped
     depends_on:
       minio:
