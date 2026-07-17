@@ -28,6 +28,7 @@ export default defineConfig({
       'date-fns',
       'date-fns/locale',
       'react-day-picker',
+      'react-day-picker/locale',
     ],
   },
   server: {

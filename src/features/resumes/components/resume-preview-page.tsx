@@ -493,7 +493,7 @@ export function ResumePreviewPage() {
   const [uploadedDateFilter, setUploadedDateFilter] = useState('')
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: 5,
   })
 
   useEffect(() => {
@@ -1017,7 +1017,11 @@ export function ResumePreviewPage() {
               </Table>
             </div>
             {filteredResumes.length > 0 ? (
-              <DataTablePagination table={table} className='mt-auto' />
+              <DataTablePagination
+                table={table}
+                className='mt-auto'
+                pageSizeOptions={[5, 10, 20, 30, 40, 50]}
+              />
             ) : null}
           </div>
         ) : (

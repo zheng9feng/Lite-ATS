@@ -336,7 +336,7 @@ describe('ResumePreviewPage', () => {
 
   it('paginates uploaded applicants', async () => {
     useResumeStore.setState({
-      resumes: Array.from({ length: 11 }, (_, index) =>
+      resumes: Array.from({ length: 6 }, (_, index) =>
         createStoredResume(index + 1)
       ),
     })
@@ -344,16 +344,17 @@ describe('ResumePreviewPage', () => {
     const { getByRole, getByText } = await renderResumePreviewPage()
 
     await expect.element(getByText(/^Candidate 1$/)).toBeInTheDocument()
-    await expect.element(getByText(/^Candidate 11$/)).not.toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 5$/)).toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 6$/)).not.toBeInTheDocument()
     await expect
       .element(getByRole('button', { name: /Go to page 2/i }))
       .toBeInTheDocument()
 
     await userEvent.click(getByRole('button', { name: /Go to next page/i }))
 
-    await expect.element(getByText(/^Candidate 11$/)).toBeInTheDocument()
+    await expect.element(getByText(/^Candidate 6$/)).toBeInTheDocument()
     await expect
-      .element(getByText('candidate11@example.com'))
+      .element(getByText('candidate6@example.com'))
       .toBeInTheDocument()
     await expect
       .element(getByRole('button', { name: /Go to previous page/i }))

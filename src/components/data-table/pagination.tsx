@@ -19,11 +19,13 @@ import {
 type DataTablePaginationProps<TData> = {
   table: Table<TData>
   className?: string
+  pageSizeOptions?: number[]
 }
 
 export function DataTablePagination<TData>({
   table,
   className,
+  pageSizeOptions = [10, 20, 30, 40, 50],
 }: DataTablePaginationProps<TData>) {
   const { t } = useTranslation()
   const currentPage = table.getState().pagination.pageIndex + 1
@@ -54,7 +56,7 @@ export function DataTablePagination<TData>({
               <SelectValue placeholder={table.getState().pagination.pageSize} />
             </SelectTrigger>
             <SelectContent side='top'>
-              {[10, 20, 30, 40, 50].map((pageSize) => (
+              {pageSizeOptions.map((pageSize) => (
                 <SelectItem key={pageSize} value={`${pageSize}`}>
                   {pageSize}
                 </SelectItem>
