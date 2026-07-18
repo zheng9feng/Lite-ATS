@@ -1,5 +1,6 @@
 import z from 'zod'
 import { createFileRoute } from '@tanstack/react-router'
+import { cacheExpirationMs } from '@/config/cache'
 import { Users } from '@/features/users'
 import { listUserRoleOptions, listUsers } from '@/features/users/data/users-api'
 
@@ -25,6 +26,8 @@ const usersSearchSchema = z.object({
 
 export const Route = createFileRoute('/_authenticated/users/')({
   validateSearch: usersSearchSchema,
+  staleTime: cacheExpirationMs.usersRouteLoader,
+  preloadStaleTime: cacheExpirationMs.usersRouteLoader,
   loader: async () => {
     const [users, roleOptions] = await Promise.all([
       listUsers(),
