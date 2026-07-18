@@ -221,6 +221,45 @@ describe('ResumeUploadPage', () => {
     expect(navigate).toHaveBeenCalledWith({ to: '/resumes/preview' })
   })
 
+  it('accepts resume files dropped on the upload area', async () => {
+    const ava = new File(['resume'], 'ava.pdf', {
+      type: 'application/pdf',
+    })
+    const ben = new File(['resume'], 'ben.pdf', {
+      type: 'application/pdf',
+    })
+    const { getByLabelText, getByText } = await renderResumeUploadPage()
+    const dropzone = document.querySelector<HTMLElement>(
+      '[data-slot="resume-file-dropzone"]'
+    )
+    const dataTransfer = new DataTransfer()
+
+    dataTransfer.items.add(ava)
+    dataTransfer.items.add(ben)
+    Object.defineProperty(dataTransfer, 'types', { value: [] })
+    dropzone?.dispatchEvent(
+      new DragEvent('dragenter', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      })
+    )
+
+    await expect.element(getByText('松开以上传文件')).toBeInTheDocument()
+
+    dropzone?.dispatchEvent(
+      new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      })
+    )
+
+    await expect.element(getByText('已选择 2 个文件')).toBeInTheDocument()
+    await expect.element(getByLabelText('姓名')).not.toBeInTheDocument()
+    await expect.element(getByLabelText('邮箱')).not.toBeInTheDocument()
+  })
+
   it('preserves existing uploaded resumes when adding another one', async () => {
     useResumeStore.getState().addResume({
       applicant: {

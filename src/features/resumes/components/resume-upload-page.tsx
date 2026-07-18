@@ -314,8 +314,16 @@ export function ResumeUploadPage() {
                       <ResumeFileInput
                         accept='application/pdf,.pdf,application/zip,.zip'
                         chooseLabel={t('resumes.form.chooseFile')}
+                        dropActiveLabel={t('resumes.form.dropActive')}
+                        dropHint={t('resumes.form.dropHint')}
                         multiple
                         noFileLabel={t('resumes.form.noFileChosen')}
+                        onFilesDrop={(files) =>
+                          form.setValue('file', files, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                          })
+                        }
                         selectedFileLabel={selectedFileLabel}
                         variant='dropzone'
                         {...fileRef}
