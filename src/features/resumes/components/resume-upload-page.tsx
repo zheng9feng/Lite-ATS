@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { z } from 'zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -18,43 +18,31 @@ import {
 } from '@/components/ui/card'
 import {
   Form,
-  FormControl,
   FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
-import { SelectDropdown } from '@/components/select-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
-import {
-  listActiveJobPositions,
-  type JobPosition,
-} from '@/features/job-positions/data/job-positions-api'
-import { uploadResume, uploadResumeBatch } from '../data/resume-api'
+import { uploadResumeBatch } from '../data/resume-api'
 import { useResumeStore } from '../data/resume-store'
 import { ResumeFileInput } from './resume-file-input'
 
 function createResumeUploadFormSchema(t: TFunction) {
   return z
     .object({
-      email: z.string().trim().optional().default(''),
       file: z.instanceof(FileList).refine((files) => files.length > 0, {
         message: t('resumes.form.validation.resumeFiles'),
       }),
-      jobPositionId: z.string().trim().optional().default(''),
-      name: z.string().trim().optional().default(''),
-      positionApplied: z.string().trim().optional().default(''),
     })
     .superRefine((values, context) => {
       const files = fileListToArray(values.file)
-      const isBulkUpload = files.length > 0 && !isSinglePdfUpload(files)
 
       if (files.length > 20) {
         context.addIssue({
@@ -69,34 +57,6 @@ function createResumeUploadFormSchema(t: TFunction) {
           code: 'custom',
           message: t('resumes.form.validation.fileSelection'),
           path: ['file'],
-        })
-      }
-
-      if (isBulkUpload) {
-        return
-      }
-
-      if (!values.jobPositionId.trim()) {
-        context.addIssue({
-          code: 'custom',
-          message: t('resumes.form.validation.positionApplied'),
-          path: ['jobPositionId'],
-        })
-      }
-
-      if (!values.name.trim()) {
-        context.addIssue({
-          code: 'custom',
-          message: t('resumes.form.validation.applicantName'),
-          path: ['name'],
-        })
-      }
-
-      if (!z.string().email().safeParse(values.email.trim()).success) {
-        context.addIssue({
-          code: 'custom',
-          message: t('resumes.form.validation.email'),
-          path: ['email'],
         })
       }
     })
@@ -131,10 +91,6 @@ function fileListToArray(files?: FileList) {
   return Array.from(files ?? [])
 }
 
-function isSinglePdfUpload(files: File[]) {
-  return files.length === 1 && isPdf(files[0])
-}
-
 function isValidResumeFileSelection(files: File[]) {
   const zipCount = files.filter((file) => isZip(file)).length
 
@@ -148,22 +104,15 @@ function isValidResumeFileSelection(files: File[]) {
 export function ResumeUploadPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const addResume = useResumeStore((state) => state.addResume)
   const addResumes = useResumeStore((state) => state.addResumes)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const formSchema = useMemo(() => createResumeUploadFormSchema(t), [t])
   const form = useForm<ResumeUploadFormInput, unknown, ResumeUploadForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: '',
       file: undefined,
-      jobPositionId: '',
-      name: '',
-      positionApplied: '',
     },
   })
-  const [jobPositions, setJobPositions] = useState<JobPosition[]>([])
-  const [isLoadingJobPositions, setIsLoadingJobPositions] = useState(true)
   const fileRef = form.register('file')
   const selectedFiles = useWatch({ control: form.control, name: 'file' })
   const selectedFileArray = fileListToArray(selectedFiles)
@@ -173,84 +122,15 @@ export function ResumeUploadPage() {
           count: selectedFileArray.length,
         })
       : selectedFileArray[0]?.name
-  const isBulkUpload =
-    selectedFileArray.length > 0 && !isSinglePdfUpload(selectedFileArray)
-
-  useEffect(() => {
-    let isCurrent = true
-
-    listActiveJobPositions()
-      .then((positions) => {
-        if (isCurrent) {
-          setJobPositions(positions)
-        }
-      })
-      .catch((error) => {
-        if (isCurrent) {
-          setIsLoadingJobPositions(false)
-          setSubmitError(
-            error instanceof Error
-              ? error.message
-              : t('jobPositionsPage.api.failed')
-          )
-        }
-      })
-      .then(() => {
-        if (isCurrent) setIsLoadingJobPositions(false)
-      })
-
-    return () => {
-      isCurrent = false
-    }
-  }, [t])
 
   const onSubmit = async (values: ResumeUploadForm) => {
     setSubmitError(null)
 
     try {
       const files = fileListToArray(values.file)
+      const resumes = await uploadResumeBatch({ files })
 
-      if (isSinglePdfUpload(files)) {
-        const jobPosition = jobPositions.find(
-          (position) => position.id === values.jobPositionId
-        )
-
-        if (!jobPosition) {
-          throw new Error(t('resumes.form.validation.positionApplied'))
-        }
-
-        const resume = await uploadResume({
-          applicant: {
-            email: values.email.trim(),
-            name: values.name.trim(),
-            positionApplied: jobPosition.title,
-          },
-          file: files[0],
-          jobPositionId: jobPosition.id,
-        })
-
-        addResume(resume)
-      } else {
-        const jobPosition = values.jobPositionId
-          ? jobPositions.find(
-              (position) => position.id === values.jobPositionId
-            )
-          : undefined
-
-        if (values.jobPositionId && !jobPosition) {
-          throw new Error(t('resumes.form.validation.positionApplied'))
-        }
-
-        const positionApplied = values.positionApplied.trim()
-        const payload = {
-          files,
-          ...(jobPosition ? { jobPositionId: jobPosition.id } : {}),
-          ...(positionApplied ? { positionApplied } : {}),
-        }
-        const resumes = await uploadResumeBatch(payload)
-
-        addResumes(resumes)
-      }
+      addResumes(resumes)
 
       navigate({ to: '/resumes/preview' })
     } catch (error) {
@@ -335,98 +215,6 @@ export function ResumeUploadPage() {
                     </FormItem>
                   )}
                 />
-                {isBulkUpload ? (
-                  <FormField
-                    control={form.control}
-                    name='positionApplied'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {t('resumes.form.positionApplied')}
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder={t('resumes.form.positionPlaceholder')}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          {t('resumes.form.positionOptionalDescription')}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ) : (
-                  <>
-                    <div className='grid gap-5 sm:grid-cols-2'>
-                      <FormField
-                        control={form.control}
-                        name='name'
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              {t('resumes.form.applicantName')}
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                autoComplete='name'
-                                placeholder={t(
-                                  'resumes.form.applicantNamePlaceholder'
-                                )}
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name='email'
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('resumes.form.email')}</FormLabel>
-                            <FormControl>
-                              <Input
-                                autoComplete='email'
-                                placeholder={t('resumes.form.emailPlaceholder')}
-                                type='email'
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <FormField
-                      control={form.control}
-                      name='jobPositionId'
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            {t('resumes.form.positionApplied')}
-                          </FormLabel>
-                          <SelectDropdown
-                            className='w-full'
-                            defaultValue={field.value}
-                            disabled={isLoadingJobPositions}
-                            isControlled
-                            isPending={isLoadingJobPositions}
-                            items={jobPositions.map((position) => ({
-                              label: position.title,
-                              value: position.id,
-                            }))}
-                            onValueChange={field.onChange}
-                            placeholder={t('resumes.form.positionPlaceholder')}
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </>
-                )}
               </CardContent>
               <CardFooter className='justify-end border-t bg-muted/20 py-4'>
                 <Button disabled={isSubmitting} type='submit'>

@@ -664,7 +664,6 @@ export const resources = {
           emailPlaceholder: 'applicant@example.com',
           noFileChosen: '未选择文件',
           positionApplied: '申请职位',
-          positionOptionalDescription: '批量上传时可留空。',
           positionPlaceholder: '前端工程师',
           replacementPdf: '替换 PDF',
           resumeFiles: '简历文件',
@@ -750,7 +749,7 @@ export const resources = {
             submit: '无法上传此简历。请重试。',
           },
           fileDescription:
-            '可选择最多 20 个 PDF 文件，或选择一个包含最多 20 个 PDF 的 ZIP 压缩包。',
+            '可选择最多 20 个 PDF 文件，或选择一个包含最多 20 个 PDF 的 ZIP 压缩包。申请人姓名将从 PDF 文件名生成。',
           submit: '上传并预览',
           submitting: '正在上传...',
           subtitle: '上传 PDF 简历以在线预览。',
@@ -1434,7 +1433,6 @@ export const resources = {
           emailPlaceholder: 'applicant@example.com',
           noFileChosen: 'No file chosen',
           positionApplied: 'Position applied for',
-          positionOptionalDescription: 'Optional for bulk uploads.',
           positionPlaceholder: 'Frontend Engineer',
           replacementPdf: 'Replacement PDF',
           resumeFiles: 'Resume files',
@@ -1522,7 +1520,7 @@ export const resources = {
             submit: 'Unable to upload this resume. Please try again.',
           },
           fileDescription:
-            'Choose up to 20 PDF files, or one ZIP archive containing up to 20 PDFs.',
+            'Choose up to 20 PDF files, or one ZIP archive containing up to 20 PDFs. Applicant names are generated from PDF filenames.',
           submit: 'Upload and preview',
           submitting: 'Uploading...',
           subtitle: 'Upload a PDF resume to preview it online.',
