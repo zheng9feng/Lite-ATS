@@ -742,8 +742,7 @@ export const resources = {
           uploadAnother: '继续上传简历',
         },
         upload: {
-          cardDescription:
-            '从设备选择简历文件。API 会将 PDF 存储到 MinIO，用于预览和限时分享。',
+          cardDescription: '',
           cardTitle: '上传 PDF 简历',
           errors: {
             submit: '无法上传此简历。请重试。',
@@ -1513,8 +1512,7 @@ export const resources = {
           uploadAnother: 'Upload another resume',
         },
         upload: {
-          cardDescription:
-            'Choose a resume file from your device. The API stores the PDF in MinIO for preview and limited-time sharing.',
+          cardDescription: '',
           cardTitle: 'Upload PDF Resume',
           errors: {
             submit: 'Unable to upload this resume. Please try again.',
