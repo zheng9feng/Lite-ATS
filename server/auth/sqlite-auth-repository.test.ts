@@ -156,4 +156,28 @@ describe('createSqliteAuthRepository', () => {
 
     repository.close()
   })
+
+  it('rolls back user creation when an atomic role assignment fails', async () => {
+    const databasePath = join(tempDir, 'auth.sqlite')
+    await migrateResumeDatabase({ databasePath })
+
+    const repository = createSqliteAuthRepository({ databasePath })
+
+    expect(() =>
+      repository.createUserWithRoles(
+        {
+          email: 'rolled-back@example.com',
+          name: 'Rolled Back',
+          passwordHash: 'hash',
+          status: 'active',
+        },
+        ['missing-role']
+      )
+    ).toThrow()
+    expect(
+      repository.findUserByEmail('rolled-back@example.com')
+    ).toBeUndefined()
+
+    repository.close()
+  })
 })

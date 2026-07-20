@@ -17,6 +17,18 @@ export type AuthSnapshot = AuthPrincipal & {
   sessionToken: string
 }
 
+export type AuthServiceErrorCode = 'email_exists' | 'registration_unavailable'
+
+export class AuthServiceError extends Error {
+  constructor(
+    readonly code: AuthServiceErrorCode,
+    message: string
+  ) {
+    super(message)
+    this.name = 'AuthServiceError'
+  }
+}
+
 type CreateAuthServiceOptions = {
   createSessionId?: () => string
   createToken?: () => string
@@ -27,6 +39,12 @@ type CreateAuthServiceOptions = {
 
 type LoginPayload = {
   email: string
+  password: string
+}
+
+type RegisterPayload = {
+  email: string
+  name: string
   password: string
 }
 
@@ -56,6 +74,28 @@ function hashSessionToken(sessionToken: string) {
 
 function invalidCredentialsError() {
   return new Error('Invalid email or password.')
+}
+
+function emailExistsError() {
+  return new AuthServiceError(
+    'email_exists',
+    'An account with this email already exists.'
+  )
+}
+
+function registrationUnavailableError() {
+  return new AuthServiceError(
+    'registration_unavailable',
+    'Registration is temporarily unavailable.'
+  )
+}
+
+function isUniqueConstraintError(error: unknown) {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    error.code === 'SQLITE_CONSTRAINT_UNIQUE'
+  )
 }
 
 function normalizeRoleName(roleName: string) {
@@ -209,7 +249,37 @@ export function createAuthService({
     repository.setRolePermissions(role.id, resolvePermissionIds(permissionNames))
   }
 
-  async function login({ email, password }: LoginPayload): Promise<AuthSnapshot> {
+  function issueSession(
+    userId: string,
+    createFailure: () => Error
+  ): AuthSnapshot {
+    const principal = buildPrincipal(userId)
+
+    if (!principal) {
+      throw createFailure()
+    }
+
+    const sessionToken = createToken()
+    const now = getNow()
+    repository.saveSession({
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + sessionTtlMs),
+      id: createSessionId(),
+      lastUsedAt: now,
+      tokenHash: hashSessionToken(sessionToken),
+      userId,
+    })
+
+    return {
+      ...principal,
+      sessionToken,
+    }
+  }
+
+  async function login({
+    email,
+    password,
+  }: LoginPayload): Promise<AuthSnapshot> {
     const user = repository.findUserByEmail(email)
 
     if (!user || user.status !== 'active') {
@@ -222,27 +292,7 @@ export function createAuthService({
       throw invalidCredentialsError()
     }
 
-    const sessionToken = createToken()
-    const now = getNow()
-    repository.saveSession({
-      createdAt: now,
-      expiresAt: new Date(now.getTime() + sessionTtlMs),
-      id: createSessionId(),
-      lastUsedAt: now,
-      tokenHash: hashSessionToken(sessionToken),
-      userId: user.id,
-    })
-
-    const principal = buildPrincipal(user.id)
-
-    if (!principal) {
-      throw invalidCredentialsError()
-    }
-
-    return {
-      ...principal,
-      sessionToken,
-    }
+    return issueSession(user.id, invalidCredentialsError)
   }
 
   async function createUser(payload: CreateLocalUserPayload) {
@@ -250,24 +300,59 @@ export function createAuthService({
       throw new Error('Every user must have at least one role.')
     }
 
-    const user = repository.createUser({
-      email: payload.email,
-      name: payload.name,
-      passwordHash: await hashPassword(payload.password),
-      status: payload.status,
-    })
-
-    if (payload.roleIds?.length) {
-      resolveRolesById(payload.roleIds)
-      repository.setUserRoles(user.id, payload.roleIds)
-    } else if (payload.roles?.length) {
-      repository.setUserRoles(user.id, resolveRoleIdsByName(payload.roles))
-    }
+    const roleIds = payload.roleIds?.length
+      ? resolveRolesById(payload.roleIds).map((role) => role.id)
+      : resolveRoleIdsByName(payload.roles ?? [])
+    const user = repository.createUserWithRoles(
+      {
+        email: payload.email,
+        name: payload.name,
+        passwordHash: await hashPassword(payload.password),
+        status: payload.status,
+      },
+      roleIds
+    )
 
     return {
       ...toPublicAuthUser(user),
       permissions: repository.getUserPermissions(user.id),
       roles: repository.getUserRoles(user.id),
+    }
+  }
+
+  async function register({
+    email,
+    name,
+    password,
+  }: RegisterPayload): Promise<AuthSnapshot> {
+    if (repository.findUserByEmail(email)) {
+      throw emailExistsError()
+    }
+
+    const normalRole = repository.findRoleByName('normal')
+
+    if (!normalRole) {
+      throw registrationUnavailableError()
+    }
+
+    try {
+      const user = repository.createUserWithRoles(
+        {
+          email,
+          name,
+          passwordHash: await hashPassword(password),
+          status: 'active',
+        },
+        [normalRole.id]
+      )
+
+      return issueSession(user.id, registrationUnavailableError)
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw emailExistsError()
+      }
+
+      throw error
     }
   }
 
@@ -312,6 +397,7 @@ export function createAuthService({
         roles: repository.getUserRoles(user.id),
       })),
     login,
+    register,
     logout: (sessionToken?: string) => {
       if (!sessionToken) return
 

@@ -4,7 +4,7 @@ import { PassThrough, Readable } from 'node:stream'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createServerApp } from '../app'
 import { createJobPositionService } from '../job-positions/job-position-service'
 import { createSqliteJobPositionRepository } from '../job-positions/sqlite-job-position-repository'
@@ -16,9 +16,12 @@ import { hashPassword } from './password'
 import { createSqliteAuthRepository } from './sqlite-auth-repository'
 
 type TestApi = {
+  authService: ReturnType<typeof createAuthService>
   close: () => Promise<void>
   request: (path: string, init?: RequestInit) => Promise<Response>
 }
+
+const verifyCaptcha = vi.fn()
 
 async function requestApp(
   app: ReturnType<typeof createServerApp>,
@@ -116,11 +119,13 @@ async function createTestApi(): Promise<TestApi> {
   authRepository.setUserRoles(admin.id, [adminRole.id])
   authRepository.setUserRoles(normal.id, [normalRole.id])
 
+  const authService = createAuthService({
+    createToken: () => 'session-token',
+    repository: authRepository,
+  })
   const app = createServerApp({
-    authService: createAuthService({
-      createToken: () => 'session-token',
-      repository: authRepository,
-    }),
+    authService,
+    captchaVerifier: { verify: verifyCaptcha },
     jobPositionService: createJobPositionService({
       createId: () => 'job-frontend',
       getNow: () => new Date('2026-06-25T08:00:00.000Z'),
@@ -139,6 +144,7 @@ async function createTestApi(): Promise<TestApi> {
     }),
   })
   return {
+    authService,
     close: async () => {
       authRepository.close()
       jobPositionRepository.close()
@@ -153,6 +159,8 @@ describe('auth API integration', () => {
   let api: TestApi
 
   beforeEach(async () => {
+    verifyCaptcha.mockReset()
+    verifyCaptcha.mockResolvedValue('valid')
     api = await createTestApi()
   })
 
@@ -189,6 +197,133 @@ describe('auth API integration', () => {
 
     expect(meResponse.status).toBe(200)
     expect(meBody.user.email).toBe('admin@example.com')
+  })
+
+  it('registers a CAPTCHA-verified normal user and returns a session', async () => {
+    const response = await api.request('/api/auth/register', {
+      body: JSON.stringify({
+        captchaToken: 'captcha-token',
+        email: 'NEW.USER@example.com',
+        name: ' New User ',
+        password: 'password1',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+    const body = (await response.json()) as {
+      permissions: string[]
+      roles: string[]
+      sessionToken: string
+      user: { email: string; name: string; status: string }
+    }
+
+    expect(response.status).toBe(201)
+    expect(verifyCaptcha).toHaveBeenCalledWith('captcha-token')
+    expect(body).toMatchObject({
+      permissions: ['resumes:read'],
+      roles: ['normal'],
+      sessionToken: 'session-token',
+      user: {
+        email: 'new.user@example.com',
+        name: 'New User',
+        status: 'active',
+      },
+    })
+  })
+
+  it('rejects duplicate registration emails with a conflict response', async () => {
+    const payload = {
+      captchaToken: 'captcha-token',
+      email: 'duplicate@example.com',
+      name: 'First User',
+      password: 'password1',
+    }
+
+    const firstResponse = await api.request('/api/auth/register', {
+      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    })
+    const duplicateResponse = await api.request('/api/auth/register', {
+      body: JSON.stringify({
+        ...payload,
+        email: 'DUPLICATE@example.com',
+      }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    })
+
+    expect(firstResponse.status).toBe(201)
+    expect(duplicateResponse.status).toBe(409)
+    await expect(duplicateResponse.json()).resolves.toEqual({
+      error: 'An account with this email already exists.',
+    })
+  })
+
+  it('validates registration before consuming a CAPTCHA token', async () => {
+    const response = await api.request('/api/auth/register', {
+      body: JSON.stringify({
+        captchaToken: 'captcha-token',
+        email: 'invalid@example.com',
+        name: 'Invalid Password',
+        password: 'NO-NUMBER',
+      }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(400)
+    expect(verifyCaptcha).not.toHaveBeenCalled()
+  })
+
+  it('fails closed for invalid or unavailable CAPTCHA verification', async () => {
+    const payload = {
+      captchaToken: 'captcha-token',
+      email: 'captcha@example.com',
+      name: 'Captcha User',
+      password: 'password1',
+    }
+
+    verifyCaptcha.mockResolvedValueOnce('invalid')
+    const invalidResponse = await api.request('/api/auth/register', {
+      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    })
+
+    verifyCaptcha.mockResolvedValueOnce('unavailable')
+    const unavailableResponse = await api.request('/api/auth/register', {
+      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    })
+
+    expect(invalidResponse.status).toBe(400)
+    expect(unavailableResponse.status).toBe(503)
+  })
+
+  it('hides unexpected registration failures behind a generic server error', async () => {
+    api.authService.register = vi
+      .fn()
+      .mockRejectedValue(new Error('sensitive database failure'))
+
+    const response = await api.request('/api/auth/register', {
+      body: JSON.stringify({
+        captchaToken: 'captcha-token',
+        email: 'failure@example.com',
+        name: 'Failure User',
+        password: 'password1',
+      }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Unable to create account. Please try again.',
+    })
   })
 
   it('protects resume mutation and keeps public share links unauthenticated', async () => {

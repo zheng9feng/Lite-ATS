@@ -64,6 +64,7 @@ export function resolveServerConfig(env: ServerEnv = process.env) {
     resumeApiHost: env.RESUME_API_HOST ?? '127.0.0.1',
     resumeApiPort: apiPort,
     shareTtlMinutes: readNumber(env.RESUME_SHARE_TTL_MINUTES, 60),
+    turnstileSecretKey: env.TURNSTILE_SECRET_KEY ?? '',
   }
 }
 

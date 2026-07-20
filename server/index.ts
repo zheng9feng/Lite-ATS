@@ -3,6 +3,7 @@ import { createServerApp } from './app'
 import { createAuthService } from './auth/auth-service'
 import { hashPassword } from './auth/password'
 import { createSqliteAuthRepository } from './auth/sqlite-auth-repository'
+import { createTurnstileVerifier } from './auth/turnstile'
 import { createJobPositionService } from './job-positions/job-position-service'
 import { createSqliteJobPositionRepository } from './job-positions/sqlite-job-position-repository'
 import { createMinioStorage } from './resumes/minio-storage'
@@ -22,6 +23,7 @@ const {
   resumeApiHost,
   resumeApiPort,
   shareTtlMinutes,
+  turnstileSecretKey,
 } = resolveServerConfig()
 
 await migrateResumeDatabase({ databasePath })
@@ -47,6 +49,7 @@ if (localAdmin.email && localAdmin.password) {
 const app = createServerApp({
   staticDirectory: appStaticDirectory,
   authService,
+  captchaVerifier: createTurnstileVerifier({ secretKey: turnstileSecretKey }),
   jobPositionService: createJobPositionService({
     repository: createSqliteJobPositionRepository({ databasePath }),
   }),

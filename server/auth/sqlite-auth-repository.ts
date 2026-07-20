@@ -320,6 +320,43 @@ export function createSqliteAuthRepository({
     }
   )
 
+  function createUserRecord(payload: CreateUserPayload) {
+    const now = new Date().toISOString()
+    const user: AuthUser = {
+      createdAt: now,
+      email: normalizeEmail(payload.email),
+      id: randomUUID(),
+      name: payload.name,
+      passwordHash: payload.passwordHash,
+      status: payload.status,
+      updatedAt: now,
+    }
+
+    insertUser.run({
+      createdAt: user.createdAt,
+      email: user.email,
+      id: user.id,
+      name: user.name,
+      passwordHash: user.passwordHash,
+      status: user.status,
+      updatedAt: user.updatedAt,
+    })
+
+    return user
+  }
+
+  const createUserWithRolesTransaction = database.transaction(
+    (payload: CreateUserPayload, roleIds: string[]) => {
+      const user = createUserRecord(payload)
+
+      for (const roleId of roleIds) {
+        insertUserRole.run({ roleId, userId: user.id })
+      }
+
+      return user
+    }
+  )
+
   return {
     close: () => database.close(),
     createRole: (payload: CreateRolePayload) => {
@@ -343,30 +380,9 @@ export function createSqliteAuthRepository({
 
       return role
     },
-    createUser: (payload: CreateUserPayload) => {
-      const now = new Date().toISOString()
-      const user: AuthUser = {
-        createdAt: now,
-        email: normalizeEmail(payload.email),
-        id: randomUUID(),
-        name: payload.name,
-        passwordHash: payload.passwordHash,
-        status: payload.status,
-        updatedAt: now,
-      }
-
-      insertUser.run({
-        createdAt: user.createdAt,
-        email: user.email,
-        id: user.id,
-        name: user.name,
-        passwordHash: user.passwordHash,
-        status: user.status,
-        updatedAt: user.updatedAt,
-      })
-
-      return user
-    },
+    createUser: createUserRecord,
+    createUserWithRoles: (payload: CreateUserPayload, roleIds: string[]) =>
+      createUserWithRolesTransaction(payload, roleIds),
     deleteSession: (sessionId: string) => {
       deleteSession.run(sessionId)
     },

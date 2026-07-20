@@ -7,14 +7,16 @@ import express, {
 import JSZip from 'jszip'
 import multer from 'multer'
 import path, { posix as pathPosix } from 'node:path'
+import { z } from 'zod'
 import {
   type AuthenticatedRequest,
   optionalAuth,
   parseBearerToken,
   requirePermission,
 } from './auth/auth-middleware'
+import { AuthServiceError, type createAuthService } from './auth/auth-service'
 import { type Permission, type RoleName } from './auth/auth-types'
-import { type createAuthService } from './auth/auth-service'
+import { type CaptchaVerifier } from './auth/turnstile'
 import { type createJobPositionService } from './job-positions/job-position-service'
 import { createInlineContentDisposition } from './resumes/file-name'
 import { type createResumeService } from './resumes/resume-service'
@@ -25,6 +27,7 @@ type ResumeService = ReturnType<typeof createResumeService>
 
 type CreateServerAppOptions = {
   authService: AuthService
+  captchaVerifier: CaptchaVerifier
   jobPositionService: JobPositionService
   resumeService: ResumeService
   staticDirectory?: string
@@ -35,6 +38,29 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024,
   },
   storage: multer.memoryStorage(),
+})
+
+const registrationSchema = z.object({
+  captchaToken: z
+    .string()
+    .min(1, 'Please complete human verification.')
+    .max(2048, 'Human verification is invalid.'),
+  email: z
+    .string()
+    .trim()
+    .max(254, 'Email must be at most 254 characters.')
+    .pipe(z.email('Please enter a valid email address.')),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Please enter your full name.')
+    .max(100, 'Full name must be at most 100 characters.'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters long.')
+    .max(128, 'Password must be at most 128 characters long.')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter.')
+    .regex(/\d/, 'Password must contain at least one number.'),
 })
 
 function requirePdf(file?: Express.Multer.File) {
@@ -139,11 +165,16 @@ function setResumeFileHeaders(response: Response, resume: { fileName: string }) 
 function sendError(response: Response, error: unknown) {
   const message =
     error instanceof Error ? error.message : 'Resume API request failed.'
-  const status = message.includes('not found')
-    ? 404
-    : message.includes('expired')
-      ? 410
-      : 400
+  const status =
+    error instanceof AuthServiceError
+      ? error.code === 'email_exists'
+        ? 409
+        : 503
+      : message.includes('not found')
+        ? 404
+        : message.includes('expired')
+          ? 410
+          : 400
 
   response.status(status).json({ error: message })
 }
@@ -172,6 +203,7 @@ function requireAuthenticated(
 
 export function createServerApp({
   authService,
+  captchaVerifier,
   jobPositionService,
   resumeService,
   staticDirectory,
@@ -184,6 +216,49 @@ export function createServerApp({
 
   app.get('/api/health', (_request, response) => {
     response.json({ ok: true })
+  })
+
+  app.post('/api/auth/register', async (request, response) => {
+    const parsedPayload = registrationSchema.safeParse(request.body)
+
+    if (!parsedPayload.success) {
+      response.status(400).json({
+        error:
+          parsedPayload.error.issues[0]?.message ??
+          'Registration details are invalid.',
+      })
+      return
+    }
+
+    const { captchaToken, ...registration } = parsedPayload.data
+    const captchaResult = await captchaVerifier.verify(captchaToken)
+
+    if (captchaResult === 'unavailable') {
+      response.status(503).json({
+        error: 'Human verification is temporarily unavailable.',
+      })
+      return
+    }
+
+    if (captchaResult !== 'valid') {
+      response.status(400).json({
+        error: 'Human verification failed. Please try again.',
+      })
+      return
+    }
+
+    try {
+      response.status(201).json(await authService.register(registration))
+    } catch (error) {
+      if (error instanceof AuthServiceError) {
+        sendError(response, error)
+        return
+      }
+
+      response.status(500).json({
+        error: 'Unable to create account. Please try again.',
+      })
+    }
   })
 
   app.post('/api/auth/login', async (request, response) => {
@@ -230,7 +305,8 @@ export function createServerApp({
             password: String(request.body.password ?? ''),
             roleIds: readStringArray(request.body.roleIds),
             roles: readStringArray(request.body.roles) as RoleName[],
-            status: request.body.status === 'inactive' ? 'inactive' : 'active',
+            status:
+              request.body.status === 'inactive' ? 'inactive' : 'active',
           })
         )
       } catch (error) {
@@ -416,8 +492,7 @@ export function createServerApp({
             department: readString(request.body.department),
             description: readString(request.body.description),
             location: readString(request.body.location),
-            status:
-              request.body.status === 'inactive' ? 'inactive' : 'active',
+            status: request.body.status === 'inactive' ? 'inactive' : 'active',
             title: readString(request.body.title),
           })
         )

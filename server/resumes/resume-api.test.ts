@@ -147,6 +147,9 @@ describe('resume bulk upload API', () => {
           typeof createAuthService
         >[0]['repository'],
       }),
+      captchaVerifier: {
+        verify: async () => 'unavailable',
+      },
       jobPositionService: createJobPositionService({
         repository: createMemoryJobPositionRepository(),
       }),

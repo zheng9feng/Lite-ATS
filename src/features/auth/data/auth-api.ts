@@ -8,6 +8,13 @@ type LoginPayload = {
   password: string
 }
 
+export type RegisterPayload = {
+  captchaToken: string
+  email: string
+  name: string
+  password: string
+}
+
 const apiBaseUrl = import.meta.env.VITE_RESUME_API_BASE_URL ?? ''
 
 function apiUrl(path: string) {
@@ -33,6 +40,18 @@ async function parseAuthResponse<T>(response: Response): Promise<T> {
 
 export async function loginWithPassword(payload: LoginPayload) {
   const response = await fetch(apiUrl('/api/auth/login'), {
+    body: JSON.stringify(payload),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+
+  return parseAuthResponse<AuthSnapshot>(response)
+}
+
+export async function registerWithPassword(payload: RegisterPayload) {
+  const response = await fetch(apiUrl('/api/auth/register'), {
     body: JSON.stringify(payload),
     headers: {
       'Content-Type': 'application/json',

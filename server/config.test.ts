@@ -45,6 +45,14 @@ describe('resolveServerConfig', () => {
       }).databasePath
     ).toBe('/tmp/lite-ats-resumes.sqlite')
   })
+
+  it('reads the Turnstile secret without providing an insecure default', () => {
+    expect(resolveServerConfig({}).turnstileSecretKey).toBe('')
+    expect(
+      resolveServerConfig({ TURNSTILE_SECRET_KEY: 'turnstile-secret' })
+        .turnstileSecretKey
+    ).toBe('turnstile-secret')
+  })
 })
 
 describe('resolveMinioConfig', () => {

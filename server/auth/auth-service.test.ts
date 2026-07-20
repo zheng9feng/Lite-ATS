@@ -82,6 +82,69 @@ describe('createAuthService', () => {
     repository.close()
   })
 
+  it('registers an active normal user and returns a session', async () => {
+    const databasePath = join(tempDir, 'auth.sqlite')
+    await migrateResumeDatabase({ databasePath })
+    const repository = createSqliteAuthRepository({ databasePath })
+    const service = createAuthService({
+      createSessionId: () => 'registration-session',
+      createToken: () => 'registration-token',
+      getNow: () => new Date('2026-07-20T00:00:00.000Z'),
+      repository,
+    })
+
+    const result = await service.register({
+      email: 'NEW.USER@example.com',
+      name: 'New User',
+      password: 'password1',
+    })
+
+    expect(result).toMatchObject({
+      permissions: ['resumes:read'],
+      roles: ['normal'],
+      sessionToken: 'registration-token',
+      user: {
+        email: 'new.user@example.com',
+        name: 'New User',
+        status: 'active',
+      },
+    })
+    await expect(
+      service.resolveSession('registration-token')
+    ).resolves.toMatchObject({
+      roles: ['normal'],
+      user: { email: 'new.user@example.com' },
+    })
+
+    repository.close()
+  })
+
+  it('rejects duplicate registration emails case-insensitively', async () => {
+    const databasePath = join(tempDir, 'auth.sqlite')
+    await migrateResumeDatabase({ databasePath })
+    const repository = createSqliteAuthRepository({ databasePath })
+    const service = createAuthService({ repository })
+
+    await service.register({
+      email: 'duplicate@example.com',
+      name: 'First User',
+      password: 'password1',
+    })
+
+    await expect(
+      service.register({
+        email: 'DUPLICATE@example.com',
+        name: 'Second User',
+        password: 'password2',
+      })
+    ).rejects.toMatchObject({
+      code: 'email_exists',
+      message: 'An account with this email already exists.',
+    })
+
+    repository.close()
+  })
+
   it('resolves sessions and rejects expired sessions', async () => {
     const databasePath = join(tempDir, 'auth.sqlite')
     await migrateResumeDatabase({ databasePath })
