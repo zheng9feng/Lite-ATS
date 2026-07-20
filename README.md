@@ -125,6 +125,12 @@ Set `RESUME_API_PUBLIC_URL` only when generated API resource URLs must use a
 different public origin, such as a separately hosted API. Loopback values such
 as `http://localhost:3001` fall back to safe same-origin paths.
 
+Set both `VITE_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in the root
+`.env` file before building the Compose deployment. The public site key is
+embedded into the frontend during the Docker image build, while the secret is
+passed only to the API container at runtime. Rebuild the image with `--build`
+after changing the site key.
+
 Check the deployment or stop it with:
 
 ```bash
@@ -139,6 +145,8 @@ docker compose -f docker/docker-compose.yml down
 | ---------------------------- | ----------------------------- | ------------------------------------------------------------------- |
 | `VITE_RESUME_API_BASE_URL`   | empty                         | Optional browser API origin. Leave empty when using the Vite proxy. |
 | `VITE_CLERK_PUBLISHABLE_KEY` | empty                         | Optional Clerk publishable key for the separate Clerk demo routes.  |
+| `VITE_TURNSTILE_SITE_KEY`    | empty                         | Public Turnstile site key embedded during the frontend build.       |
+| `TURNSTILE_SECRET_KEY`       | empty                         | Server-only Turnstile secret used to verify registration tokens.    |
 | `APP_PORT`                   | `3001`                        | Express, container, and published host port used by Compose.        |
 | `APP_STATIC_DIRECTORY`       | empty                         | Built frontend directory served by Express in production.           |
 | `RESUME_API_HOST`            | `127.0.0.1`                   | Address the Express API listens on. Compose overrides to `0.0.0.0`. |
