@@ -5,6 +5,7 @@ services:
     build:
       args:
         APP_PORT: ${APP_PORT:-3001}
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
       context: ..
       dockerfile: docker/Dockerfile
     image: lite-ats:local
@@ -28,6 +29,7 @@ services:
       RESUME_API_PUBLIC_URL: ${RESUME_API_PUBLIC_URL:-}
       RESUME_DATABASE_PATH: /app/server/.data/resumes.sqlite
       RESUME_SHARE_TTL_MINUTES: ${RESUME_SHARE_TTL_MINUTES:-60}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
     healthcheck:
       test:
         - CMD
