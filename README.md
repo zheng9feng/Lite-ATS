@@ -107,7 +107,7 @@ Change those credentials before sharing a local database or deploying the API.
 Build the application image and start Lite ATS with MinIO:
 
 ```bash
-docker compose -f docker/docker-compose.yml up --build -d
+docker compose --env-file .env -f docker/docker-compose.yml up --build -d
 ```
 
 For a local deployment, open `http://localhost:<APP_PORT>`. For a remote
@@ -117,11 +117,13 @@ proxy. The default application port is `3001`. The MinIO console is available
 on port `9001`. Compose stores SQLite and MinIO data in named volumes, so both
 survive container restarts.
 
-Compose reads `.env` automatically. Change `LOCAL_ADMIN_PASSWORD` and the
-MinIO credentials before exposing the deployment. API requests and generated
-resume links use the browser's current origin by default, so they work when the
-app is reached through a server IP, a custom port, or an HTTPS reverse proxy.
-Set `RESUME_API_PUBLIC_URL` only when generated API resource URLs must use a
+The Compose commands pass the root `.env` explicitly because the Compose file
+lives in `docker/`; without `--env-file .env`, Compose looks for
+`docker/.env`. Change `LOCAL_ADMIN_PASSWORD` and the MinIO credentials before
+exposing the deployment. API requests and generated resume links use the
+browser's current origin by default, so they work when the app is reached
+through a server IP, a custom port, or an HTTPS reverse proxy. Set
+`RESUME_API_PUBLIC_URL` only when generated API resource URLs must use a
 different public origin, such as a separately hosted API. Loopback values such
 as `http://localhost:3001` fall back to safe same-origin paths.
 
@@ -134,9 +136,9 @@ after changing the site key.
 Check the deployment or stop it with:
 
 ```bash
-docker compose -f docker/docker-compose.yml ps
-docker compose -f docker/docker-compose.yml logs -f app
-docker compose -f docker/docker-compose.yml down
+docker compose --env-file .env -f docker/docker-compose.yml ps
+docker compose --env-file .env -f docker/docker-compose.yml logs -f app
+docker compose --env-file .env -f docker/docker-compose.yml down
 ```
 
 ## Environment Variables

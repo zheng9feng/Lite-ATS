@@ -96,11 +96,11 @@ jobs:
           fi
 
           git pull --ff-only origin main
-          docker compose -f docker/docker-compose.yml config --quiet
-          docker compose -f docker/docker-compose.yml up \
+          docker compose --env-file .env -f docker/docker-compose.yml config --quiet
+          docker compose --env-file .env -f docker/docker-compose.yml up \
             --build \
             --detach \
             --wait \
             --remove-orphans
-          docker compose -f docker/docker-compose.yml ps
+          docker compose --env-file .env -f docker/docker-compose.yml ps
           REMOTE_SCRIPT

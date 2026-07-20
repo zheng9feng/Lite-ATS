@@ -1,0 +1,9 @@
+.env
+.git
+.github
+.vitest-attachments
+coverage
+dist
+node_modules
+server/.data
+*.log
