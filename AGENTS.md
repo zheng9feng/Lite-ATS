@@ -17,7 +17,9 @@ are persisted in SQLite. Uploaded PDFs are stored in MinIO. Server modules are
 grouped under `server/auth/`, `server/job-positions/`, and `server/resumes/`;
 database migrations live under `server/resumes/migrations/`. Frontend tests are
 colocated as `*.test.ts` or `*.test.tsx` under `src/`; server tests live under
-`server/` and use `vitest.server.config.ts`.
+`server/` and use `vitest.server.config.ts`. Production container files live
+under `docker/`; the Express server can serve the built SPA when
+`APP_STATIC_DIRECTORY` is configured.
 
 ## Build, Test, and Development Commands
 
@@ -26,6 +28,8 @@ colocated as `*.test.ts` or `*.test.tsx` under `src/`; server tests live under
 - `pnpm run dev:api` starts the local Express API in watch mode.
 - `pnpm run build` type-checks with `tsc -b` and builds the app.
 - `pnpm run preview` serves the production build locally.
+- `pnpm run start` starts the Express API without watch mode and serves the SPA
+  when `APP_STATIC_DIRECTORY` points to the built `dist/` directory.
 - `pnpm run lint` runs ESLint across the repository.
 - `pnpm run format:check` checks Prettier formatting; `pnpm run format` writes
   formatting changes.
@@ -44,11 +48,22 @@ local admin when `LOCAL_ADMIN_EMAIL` and `LOCAL_ADMIN_PASSWORD` are set. The
 Vite server proxies `/api` to `http://localhost:3001`, so
 `VITE_RESUME_API_BASE_URL` can stay empty for normal local development.
 
+For a container deployment, use
+`docker compose --env-file .env -f docker/docker-compose.yml up --build -d`.
+The Compose stack builds the app image, serves the SPA and API from one Express
+origin, and starts MinIO with persistent named volumes. Keep the explicit
+`--env-file .env` because the Compose file is below the repository root.
+Rebuild the image after changing `VITE_TURNSTILE_SITE_KEY`, because Vite embeds
+that public key at build time; `TURNSTILE_SECRET_KEY` remains a runtime-only
+server secret. Both keys are required by Compose.
+
 The API accepts either `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` or MinIO's
 standard `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` names. Keep
 `RESUME_API_PUBLIC_URL` aligned with the public API origin used for resume
-preview and share links. SQLite defaults to `server/.data/resumes.sqlite`; use
-`RESUME_DATABASE_PATH` to change it.
+preview and share links when it differs from the browser origin; leave it empty
+for the normal same-origin deployment. Loopback public URLs are intentionally
+normalized to same-origin paths. SQLite defaults to
+`server/.data/resumes.sqlite`; use `RESUME_DATABASE_PATH` to change it.
 
 ## Coding Style & Naming Conventions
 
@@ -73,8 +88,15 @@ Server tests use Node mode through `vitest.server.config.ts`. Add focused
 server tests when changing Express handlers, authentication or authorization,
 SQLite repositories or migrations, job-position behavior, MinIO storage,
 filename encoding, bulk PDF/ZIP uploads, share-token expiry, or server
-configuration parsing. Permission-protected endpoints should cover
+configuration parsing. Authentication changes should cover registration,
+Cloudflare Turnstile verification, login/session behavior, and RBAC cases.
+Permission-protected endpoints should cover
 unauthenticated, unauthorized, and authorized cases where applicable.
+
+When changing the Dockerfile or Compose configuration, validate with
+`docker compose --env-file .env -f docker/docker-compose.yml config` and, when
+Docker is available, build the image and smoke-test `/api/health`, SPA fallback
+routes, authentication, and MinIO-backed upload behavior.
 
 ## Commit & Pull Request Guidelines
 
@@ -93,6 +115,7 @@ Do not commit secrets, local environment files, SQLite databases, or MinIO
 data. Local email/password authentication is the primary auth path; Clerk code
 remains for separate demo routes. Keep Clerk keys, local-admin credentials, and
 MinIO credentials local, and do not share the default development admin
-password outside a disposable local environment. Update `.env.example` when
-adding or renaming API configuration, and document new required variables in
-PRs.
+password outside a disposable local environment. The Turnstile site key is
+public and uses the `VITE_` prefix; the Turnstile secret must never use that
+prefix or be included in the frontend build. Update `.env.example` when adding
+or renaming API configuration, and document new required variables in PRs.
