@@ -9,14 +9,16 @@ and MinIO-backed PDF storage with expiring public share links.
 
 ## Features
 
-- Resume upload, metadata editing, preview, deletion, and expiring share links.
+- Single and bulk PDF/ZIP resume upload, metadata editing, preview, deletion,
+  dashboard summaries, and expiring share links.
 - Local Express API with SQLite persistence for resumes, users, roles,
-  permissions, and sessions.
+  permissions, sessions, and job positions.
 - MinIO object storage for uploaded PDF files.
-- Local email/password authentication with bearer-session API authorization.
-- RBAC-protected navigation for resume, user, and permission management.
-- Dashboard, users table, permissions management, settings, auth, and error
-  pages.
+- Local email/password authentication, Cloudflare Turnstile-protected account
+  registration, and bearer-session API authorization.
+- RBAC-protected navigation and workflows for resumes, job positions, users,
+  roles, and permissions.
+- Dashboard analytics, settings, authentication, and error pages.
 - Responsive shadcn/ui interface with light/dark mode, RTL-capable primitives,
   and English / Simplified Chinese localization.
 
@@ -37,7 +39,8 @@ and MinIO-backed PDF storage with expiring public share links.
 src/
   components/       shared UI, layout, tables, and app chrome
   context/          theme, layout, language, search, and direction providers
-  features/         auth, dashboard, permissions, resumes, settings, users
+  features/         domain UI and API clients, including auth, resumes, RBAC,
+                    job positions, dashboard, and settings
   hooks/            shared React hooks
   lib/              utilities, i18n, permissions, cookies, error handling
   routes/           TanStack file-based routes
@@ -47,8 +50,13 @@ src/
 server/
   app.ts            Express app and API routes
   index.ts          API bootstrap, migrations, local admin seed
-  auth/             local auth, password hashing, sessions, RBAC repository
+  auth/             local auth, registration, Turnstile, sessions, RBAC
+  job-positions/    job-position service and SQLite repository
   resumes/          MinIO storage, resume service, SQLite migrations
+
+docker/
+  Dockerfile        multi-stage production image
+  docker-compose.yml  app and MinIO deployment with persistent volumes
 ```
 
 ## Getting Started
@@ -101,6 +109,9 @@ Password: password123
 ```
 
 Change those credentials before sharing a local database or deploying the API.
+To enable self-registration, configure `VITE_TURNSTILE_SITE_KEY` and
+`TURNSTILE_SECRET_KEY`. Login with an existing or seeded account continues to
+work when those keys are unset.
 
 ## Docker Compose
 
@@ -143,43 +154,51 @@ docker compose --env-file .env -f docker/docker-compose.yml down
 
 ## Environment Variables
 
-| Variable                     | Default                       | Purpose                                                             |
-| ---------------------------- | ----------------------------- | ------------------------------------------------------------------- |
-| `VITE_RESUME_API_BASE_URL`   | empty                         | Optional browser API origin. Leave empty when using the Vite proxy. |
-| `VITE_CLERK_PUBLISHABLE_KEY` | empty                         | Optional Clerk publishable key for the separate Clerk demo routes.  |
-| `VITE_TURNSTILE_SITE_KEY`    | empty                         | Public Turnstile site key embedded during the frontend build.       |
-| `TURNSTILE_SECRET_KEY`       | empty                         | Server-only Turnstile secret used to verify registration tokens.    |
-| `APP_PORT`                   | `3001`                        | Express, container, and published host port used by Compose.        |
-| `APP_STATIC_DIRECTORY`       | empty                         | Built frontend directory served by Express in production.           |
-| `RESUME_API_HOST`            | `127.0.0.1`                   | Address the Express API listens on. Compose overrides to `0.0.0.0`. |
-| `RESUME_API_PORT`            | `3001`                        | Express port outside Compose; Compose derives it from `APP_PORT`.   |
-| `RESUME_API_PUBLIC_URL`      | empty                         | Optional public API origin for generated preview and share links.   |
-| `RESUME_DATABASE_PATH`       | `server/.data/resumes.sqlite` | SQLite database path.                                               |
-| `RESUME_SHARE_TTL_MINUTES`   | `60`                          | Lifetime for public resume share links.                             |
-| `LOCAL_ADMIN_EMAIL`          | empty                         | Admin seed email. No admin is seeded when empty.                    |
-| `LOCAL_ADMIN_NAME`           | `Local Admin`                 | Admin seed display name.                                            |
-| `LOCAL_ADMIN_PASSWORD`       | empty                         | Admin seed password. No admin is seeded when empty.                 |
-| `MINIO_ENDPOINT`             | `localhost`                   | MinIO endpoint hostname.                                            |
-| `MINIO_PORT`                 | `9000`                        | MinIO API port.                                                     |
-| `MINIO_USE_SSL`              | `false`                       | Whether the MinIO client uses SSL.                                  |
-| `MINIO_ACCESS_KEY`           | `minioadmin`                  | MinIO access key.                                                   |
-| `MINIO_SECRET_KEY`           | `minioadmin`                  | MinIO secret key.                                                   |
-| `MINIO_ROOT_USER`            | unset                         | Alternative MinIO root username if API-specific keys are absent.    |
-| `MINIO_ROOT_PASSWORD`        | unset                         | Alternative MinIO root password if API-specific keys are absent.    |
-| `MINIO_BUCKET`               | `resumes`                     | Bucket used for uploaded resume PDFs.                               |
+| Variable                           | Default                       | Purpose                                                             |
+| ---------------------------------- | ----------------------------- | ------------------------------------------------------------------- |
+| `VITE_RESUME_API_BASE_URL`         | empty                         | Optional browser API origin. Leave empty when using the Vite proxy. |
+| `VITE_CLERK_PUBLISHABLE_KEY`       | empty                         | Optional Clerk publishable key for the separate Clerk demo routes.  |
+| `VITE_DEFAULT_QUERY_STALE_TIME_MS` | `10000`                       | Default TanStack Query cache freshness duration in milliseconds.    |
+| `VITE_USERS_ROUTE_STALE_TIME_MS`   | `30000`                       | Users route loader cache freshness duration in milliseconds.        |
+| `VITE_TURNSTILE_SITE_KEY`          | empty                         | Public Turnstile site key embedded during the frontend build.       |
+| `TURNSTILE_SECRET_KEY`             | empty                         | Server-only Turnstile secret used to verify registration tokens.    |
+| `APP_PORT`                         | `3001`                        | Express, container, and published host port used by Compose.        |
+| `APP_STATIC_DIRECTORY`             | empty                         | Built frontend directory served by Express in production.           |
+| `RESUME_API_HOST`                  | `127.0.0.1`                   | Address the Express API listens on. Compose overrides to `0.0.0.0`. |
+| `RESUME_API_PORT`                  | `3001`                        | Express port outside Compose; Compose derives it from `APP_PORT`.   |
+| `RESUME_API_PUBLIC_URL`            | empty                         | Optional public API origin for generated preview and share links.   |
+| `RESUME_DATABASE_PATH`             | `server/.data/resumes.sqlite` | SQLite database path.                                               |
+| `RESUME_SHARE_TTL_MINUTES`         | `60`                          | Lifetime for public resume share links.                             |
+| `LOCAL_ADMIN_EMAIL`                | empty                         | Admin seed email. No admin is seeded when empty.                    |
+| `LOCAL_ADMIN_NAME`                 | `Local Admin`                 | Admin seed display name.                                            |
+| `LOCAL_ADMIN_PASSWORD`             | empty                         | Admin seed password. No admin is seeded when empty.                 |
+| `MINIO_ENDPOINT`                   | `localhost`                   | MinIO endpoint hostname.                                            |
+| `MINIO_PORT`                       | `9000`                        | MinIO API port.                                                     |
+| `MINIO_USE_SSL`                    | `false`                       | Whether the MinIO client uses SSL.                                  |
+| `MINIO_ACCESS_KEY`                 | `minioadmin`                  | MinIO access key.                                                   |
+| `MINIO_SECRET_KEY`                 | `minioadmin`                  | MinIO secret key.                                                   |
+| `MINIO_ROOT_USER`                  | unset                         | Alternative MinIO root username if API-specific keys are absent.    |
+| `MINIO_ROOT_PASSWORD`              | unset                         | Alternative MinIO root password if API-specific keys are absent.    |
+| `MINIO_BUCKET`                     | `resumes`                     | Bucket used for uploaded resume PDFs.                               |
 
 ## API Overview
 
 The local API is mounted under `/api`.
 
 - `GET /api/health` checks API health.
-- `POST /api/auth/login`, `POST /api/auth/logout`, and `GET /api/auth/me`
+- `POST /api/auth/register` creates a Turnstile-verified `normal` account;
+  `POST /api/auth/login`, `POST /api/auth/logout`, and `GET /api/auth/me`
   manage local sessions.
-- `GET /api/resumes`, `POST /api/resumes`, `PATCH /api/resumes/:id`,
+- `GET /api/resumes`, `GET /api/resumes/summary`, `POST /api/resumes`,
+  `POST /api/resumes/bulk`, `PATCH /api/resumes/:id`,
   `DELETE /api/resumes/:id`, `GET /api/resumes/:id/file`, and
-  `POST /api/resumes/:id/share` manage protected resume workflows.
+  `POST /api/resumes/:id/share` manage protected resume workflows and dashboard
+  data.
 - `GET /api/resume-shares/:token` streams a shared PDF without requiring auth
   until the token expires.
+- `GET /api/job-positions`, `GET /api/job-positions/active`,
+  `POST /api/job-positions`, `PATCH /api/job-positions/:id`, and
+  `DELETE /api/job-positions/:id` manage active and inactive job positions.
 - `GET /api/users`, `POST /api/users`, `PATCH /api/users/:id`,
   `DELETE /api/users/:id`, and `PUT /api/users/:id/roles` manage local users.
 - `GET /api/roles`, `POST /api/roles`, `PATCH /api/roles/:id`,
@@ -197,6 +216,7 @@ pnpm run dev              # Start the Vite dev server
 pnpm run dev:api          # Start the local Express API
 pnpm run build            # Type-check and build the frontend
 pnpm run preview          # Serve the production build locally
+pnpm run start            # Start the Express API without watch mode
 pnpm run lint             # Run ESLint
 pnpm run format:check     # Check Prettier formatting
 pnpm run format           # Format files with Prettier
